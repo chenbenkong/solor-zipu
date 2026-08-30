@@ -1,0 +1,74 @@
+=====================================
+    3D太阳系模拟器 - 星球贴图链接汇总
+=====================================
+
+说明：
+- 除了地球使用 Three.js 官方纹理外，其他所有天体（太阳、月球、八大行星+冥王星）都使用用户提供的图床链接
+- 地球使用了3张贴图：大气层贴图、法线贴图、镜面反射贴图
+- 土星环使用程序生成的纹理
+
+-------------------------------------
+一、太阳
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRIWm0jT5a-EeCfimaPr9NzYP3govqAAKuC2sbNFKgRZ6M9gXnWGZhAQADAgADdwADOgQ
+
+-------------------------------------
+二、月球
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRMmm08HRxz6YJUNnuzgFoIIXbs9XiAAKUC2sbNFKoRWH931Yr_qNpAQADAgADdwADOgQ
+
+-------------------------------------
+三、水星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRM2m09FcbWM59LtHdMx9s-igf1sPcAAKVC2sbNFKoRbjbx7-nWBBdAQADAgADdwADOgQ
+
+-------------------------------------
+四、金星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRNGm09OuoDdIWbaQPEsrlB2XMhvuCAAKWC2sbNFKoRRv_eSKFETQaAQADAgADdwADOgQ
+
+-------------------------------------
+五、地球（Three.js官方纹理）
+-------------------------------------
+1. 大气层贴图：
+https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_atmos_2048.jpg
+
+2. 法线贴图：
+https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_normal_2048.jpg
+
+3. 镜面反射贴图：
+https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_specular_2048.jpg
+
+-------------------------------------
+六、火星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIROGm098pzVH5S3oHjAAFISQtwC7hPJAACmgtrGzRSqEWW6vjKkHfDzgEAAwIAA3cAAzoE
+
+-------------------------------------
+七、木星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRNmm09fX2VBwAATfoW74p_-lkCnTuOAACmAtrGzRSqEW-wwsEjvJKOgEAAwIAA3cAAzoE
+
+-------------------------------------
+八、土星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIROWm0-B1O_VsY3boud4IR5V4bTT0xAAKbC2sbNFKoRd3zVPvXLlHbAQADAgADdwADOgQ
+
+-------------------------------------
+九、天王星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRPWm0-SNKQTtz2ftuFmp7lU6bf6Z7AAKfC2sbNFKoRQaBydqfg6INAQADAgADdwADOgQ
+
+-------------------------------------
+十、海王星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRPmm0-X8CSe8QnHhtUP7ecb4WEvIdAAKgC2sbNFKoRQvcOV4DGSJDAQADAgADdwADOgQ
+
+-------------------------------------
+十一、冥王星
+-------------------------------------
+https://pic.82314912.xyz/api/cfile/AgACAgEAAyEGAATEcCnBAAIRP2m0-lCP2EfITnNSGVCrX72fTuXCAAKhC2sbNFKoRe5GySvzF_JRAQADAgADdwADOgQ
+
+=====================================
+              文件结束
+=====================================
