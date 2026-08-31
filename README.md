@@ -14,7 +14,7 @@
 
 ### 在线体验
 
-打开 <https://chenbenkong.github.io/solor-zipu/>，点击右侧 **「登上飞船」** 按钮即可进入飞船模式。
+打开 <https://chenbenkong.github.io/solor-zipu/>，点击底部控制栏的 **「星隼号」** 按钮即可进入飞船模式。
 
 ### 本地运行
 

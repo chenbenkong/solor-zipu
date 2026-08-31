@@ -352,29 +352,16 @@
 .cockpit-hud[data-cameramode='chase'] .cockpit-hint { display: none; }
 .cockpit-console.collapsed ~ .cockpit-hint { display: none; }
 
-/* ---------- 飞船入口按钮（太阳系模式） ---------- */
-.ship-mode-btn {
-  position: absolute;
-  right: 18px;
-  top: 118px;
-  z-index: 26;
-  padding: 0.5rem 0.95rem;
-  font-size: 0.85rem;
+/* ---------- 飞船入口按钮（太阳系模式，底部控制栏内） ---------- */
+.ship-btn {
+  color: var(--fui-amber, #ffb454) !important;
+  border-color: rgba(255, 180, 84, 0.5) !important;
+  text-shadow: 0 0 10px rgba(255, 180, 84, 0.45);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--fui-amber);
-  background: var(--fui-bg);
-  border: 1px solid var(--fui-border);
-  border-radius: 12px;
-  cursor: pointer;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-  transition: background 0.2s, box-shadow 0.2s;
 }
-.ship-mode-btn:hover {
-  background: rgba(255, 180, 84, 0.16);
-  box-shadow: 0 0 20px rgba(255, 180, 84, 0.35);
+.ship-btn:hover {
+  background: rgba(255, 180, 84, 0.16) !important;
+  box-shadow: 0 0 18px rgba(255, 180, 84, 0.35);
 }
 
 /* ---------- 响应式 ---------- */

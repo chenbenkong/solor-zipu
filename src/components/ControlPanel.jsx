@@ -20,7 +20,8 @@ export function ControlPanel({
   onToggleLensFlare,
   onResetView,
   onToggleMusic,
-  onBlackHole
+  onBlackHole,
+  onEnterShip
 }) {
   return (
     <div className="controls">
@@ -59,6 +60,7 @@ export function ControlPanel({
         </button>
         <button className="ctrl-btn" onClick={onResetView}>⟲ 重置</button>
         <button className="ctrl-btn bh-btn" onClick={onBlackHole} title="进入 GARGANTUA 黑洞">◉ 探索黑洞</button>
+        <button className="ctrl-btn ship-btn" onClick={onEnterShip} title="登上星隼号">🛰 星隼号</button>
       </div>
 
       <div className="control-group control-toggles">

@@ -424,6 +424,7 @@ export default function App() {
             onResetView={handleResetView}
             onToggleMusic={handleToggleMusic}
             onBlackHole={handleEnterBlackHole}
+            onEnterShip={handleEnterShipMode}
           />
         </>
       )}
@@ -437,12 +438,7 @@ export default function App() {
         {cinemaMode ? '✕' : '◎'}
       </button>
 
-      {/* 星际飞船模式入口（飞船模式内隐藏） */}
-      {!shipMode && !cinemaMode && (
-        <button className="ship-mode-btn" onClick={handleEnterShipMode} title="登上星隼号 ZF-77">
-          🚀 登上飞船
-        </button>
-      )}
+      {/* 星际飞船模式入口：底部控制栏内的「星隼号」按钮（ControlPanel） */}
 
       {/* 飞船驾驶舱 HUD */}
       {shipMode && shipHud && (
