@@ -329,10 +329,11 @@ export class ShipSystem {
     const wp = t.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
 
     if (this.navPhase === 'jump') {
-      // 跳跃段：朝目标当前位置高速飞行（目标在公转也持续追踪）
+      // 跳跃段：纯追踪（每帧从当前位置指向目标，公转目标也能平滑追上）+ 近距减速坡道
       const stopDist = t.radius * (t.kind === 'star' ? 2.6 : 6) + 40;
-      const remain = this.shipState.position.distanceTo(wp) - stopDist;
-      const dir = tmpV2.subVectors(wp, this._jumpFrom);
+      const rawDist = this.shipState.position.distanceTo(wp);
+      const remain = rawDist - stopDist;
+      const dir = tmpV2.subVectors(wp, this.shipState.position);
       if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
       dir.normalize();
       const dirSafe = dir.clone(); // 防止后续临时向量计算覆写共享 tmpV2
@@ -341,7 +342,11 @@ export class ShipSystem {
       this._aimNoseAt(wp);
       this.shipState.quaternion.copy(this._aimQ);
 
-      const step = this.jumpSpeed * dt * (isPaused ? 0.15 : 1);
+      // 冲刺 → 减速坡道：距离越近步长越小，平滑衔接接近段
+      const step = Math.min(
+        this.jumpSpeed * dt * (isPaused ? 0.15 : 1),
+        Math.max(remain * 0.55, 24)
+      );
       if (remain <= step) {
         this.navPhase = 'approach';
         this._navPrevWp = wp.clone();

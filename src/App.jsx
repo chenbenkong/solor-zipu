@@ -13,6 +13,16 @@ import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/plane
 import './styles/index.css';
 import './styles/cockpit.css';
 
+// 飞船导航目标全集：恒星 + 行星 + 卫星 + 知名小行星
+const SHIP_NAV_TARGETS = [
+  '太阳',
+  '水星', '金星', '地球', '火星', '木星', '土星', '天王星', '海王星', '冥王星',
+  '月球',
+  '木卫一（伊奥）', '木卫二（欧罗巴）', '木卫三（盖尼米德）', '木卫四（卡里斯托）',
+  '土卫六（泰坦）', '土卫二（恩克拉多斯）',
+  '谷神星', '灶神星', '智神星', '婚神星'
+];
+
 // 错误边界：捕获子组件渲染期异常，避免整页空白（黑屏）且无提示
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -438,7 +448,7 @@ export default function App() {
       {shipMode && shipHud && (
         <CockpitHud
           hud={shipHud}
-          planets={["太阳","水星","金星","地球","火星","木星","土星","天王星","海王星","冥王星","月球","谷神星","灶神星","智神星","婚神星"]}
+          planets={SHIP_NAV_TARGETS}
           onModeChange={handleShipModeChange}
           onNavSelect={handleShipNavSelect}
           onToggleCamera={handleShipCamera}
