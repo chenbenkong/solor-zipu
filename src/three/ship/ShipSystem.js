@@ -315,11 +315,11 @@ export class ShipSystem {
       if (input.back) thrust -= 0.5;
     }
 
-    // 油门与速度
+    // 油门与速度：转速限制与目标速度（油门杆持续推力时响应更快）
     const targetSpeed = thrust > 0
       ? this.maxCruiseSpeed * thrust * (input.boost ? 1.4 : 1)
       : thrust < 0 ? -this.maxCruiseSpeed * 0.35 : 0;
-    const rate = thrust !== 0 ? this.accel : this.accel * 1.6;
+    const rate = this._stickThrottle > 0 ? this.accel * 2.2 : (thrust !== 0 ? this.accel : this.accel * 1.6);
     const cur = this._cruiseSpeed || 0;
     const next = cur + THREE.MathUtils.clamp(targetSpeed - cur, -rate * dt, rate * dt);
     this._cruiseSpeed = next;
