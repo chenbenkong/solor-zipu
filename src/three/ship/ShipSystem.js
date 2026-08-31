@@ -20,8 +20,10 @@ const tmpQ1 = new THREE.Quaternion();
 const tmpQ2 = new THREE.Quaternion();
 const tmpM1 = new THREE.Matrix4();
 
-const VIEW_LOCK_KEY = 'starship-viewlock-v1';
+const VIEW_LOCK_KEY = 'starship-viewlock-v2';
 const AIM_UP = new THREE.Vector3();
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
+const SUN_TMP = new THREE.Vector3();
 export class ShipSystem {
   constructor(scene, camera, renderer, solarSystemGroup, planetMeshes, sun, opts = {}) {
     this.scene = scene;
@@ -58,6 +60,8 @@ export class ShipSystem {
     this._jumpFrom = new THREE.Vector3();
     this._jumpStart = 0;
     this._prevPos = new THREE.Vector3();
+    this._navPrevWp = null;
+    this._navApproachStart = 0;
     this._savedCamPos = null;
     this._savedCamTarget = null;
     this._saveAccum = 0;
@@ -124,6 +128,7 @@ export class ShipSystem {
       this.navLock = false;
       this.navPhase = 'idle';
       this.navTarget = null;
+      this._navPrevWp = null;
       this.navMessage = { text: '已切换手动模式，自动驾驶解除', tone: 'info', at: Date.now() };
     }
   }
@@ -173,6 +178,7 @@ export class ShipSystem {
 
   cancelNav() {
     this.navTarget = null;
+    this._navPrevWp = null;
     this.navPhase = 'idle';
     this.navLock = false;
     this.mode = 'cruise';
@@ -221,7 +227,7 @@ export class ShipSystem {
     this._time += dt;
 
     if (this.navLock && this.navPhase === 'locked' && this.navTarget) {
-      this._updateViewLock();
+      this._updateViewLock(dt);
     } else if (this.mode === 'nav' && this.navTarget) {
       this._updateNav(dt, isPaused);
     } else if (this.mode === 'cruise') {
@@ -329,19 +335,28 @@ export class ShipSystem {
       const step = this.jumpSpeed * dt * (isPaused ? 0.15 : 1);
       if (remain <= step) {
         this.navPhase = 'approach';
+        this._navPrevWp = wp.clone();
+        this._navApproachStart = this._time;
       } else {
         this.shipState.position.addScaledVector(dirSafe, step);
       }
     } else if (this.navPhase === 'approach') {
-      // 接近段：平滑滑向最佳观赏点（ savedView 优先，否则按太阳反方向计算）
+      // 接近段：滑向最佳观赏点 + 目标公转速度前馈（防止快速内行星追摆）+ 超时兜底
+      if (!this._navPrevWp) this._navPrevWp = wp.clone();
+      const targetDelta = tmpV2.subVectors(wp, this._navPrevWp);
+      this._navPrevWp.copy(wp);
       const desired = this._computeViewPosition(wp, t, tmpV3).clone();
       const gap = this.shipState.position.distanceTo(desired);
-      const k = 1 - Math.exp(-1.5 * dt);
-      this.shipState.position.lerp(desired, k);
+      const k = 1 - Math.exp(-1.8 * dt);
+      this.shipState.position.lerp(desired, k).add(targetDelta);
       this._aimNoseAt(wp);
       this.shipState.quaternion.copy(this._aimQ);
 
-      if (gap < Math.max(t.radius * 0.06, 4)) {
+      if (gap < Math.max(t.radius * 0.12, 4) || this._time - this._navApproachStart > 22) {
+        // 超时兜底：直接吸附到观赏点，防止无限追摆
+        if (this._time - this._navApproachStart > 22) {
+          this.shipState.position.copy(this._computeViewPosition(wp, t, tmpV3));
+        }
         this._enterViewLock(wp);
       }
     }
@@ -350,19 +365,31 @@ export class ShipSystem {
 
   // 最佳观赏点：行星背阳侧偏外（阳光照亮 + 星空背景），距离 = radius × viewFactor
   _computeViewPosition(wp, t, out) {
-    if (this.savedView && this.savedView.target === t.name) {
-      // 复用保存的位置
-      if (t.selfRotating) {
-        t.mesh.getWorldQuaternion(tmpQ1);
-        return out.copy(wp).add(tmpV2.copy(this.savedView.relPos).applyQuaternion(tmpQ1));
-      }
-      return out.copy(wp).add(this.savedView.relPosAnchor);
+    // 观赏点 = 星球向阳面外侧：始终看到被阳光照亮的半球，同时行星地表在眼前自转
+    const sunPos = this.sun ? this.sun.getWorldPosition(SUN_TMP) : null;
+    const dir = new THREE.Vector3();
+    if (t.kind === 'star' || !sunPos || sunPos.distanceToSquared(wp) < 1e-4) {
+      // 太阳目标：从当前来向观赏
+      dir.subVectors(this.shipState.position, wp);
+      if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0.2);
+      dir.normalize();
+    } else {
+      dir.subVectors(sunPos, wp).normalize();
     }
-    const dir = tmpV2.copy(wp);
-    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1); else dir.normalize();
-    const dist = t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0);
-    out.copy(wp).addScaledVector(dir, dist);
-    out.y += t.radius * 0.45;
+    const side = new THREE.Vector3().crossVectors(dir, UP_AXIS);
+    if (side.lengthSq() < 1e-6) side.set(0, 0, 1);
+    side.normalize();
+
+    let dist = t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0);
+    let yOff = t.radius * 0.45;
+    let lateral = t.radius * 0.35;
+    if (this.savedView && this.savedView.target === t.name) {
+      dist = this.savedView.dist;
+      yOff = this.savedView.yOff;
+      lateral = this.savedView.lateral;
+    }
+    out.copy(wp).addScaledVector(dir, dist).addScaledVector(side, lateral);
+    out.y += yOff;
     return out;
   }
 
@@ -370,76 +397,50 @@ export class ShipSystem {
     const t = this.navTarget;
     this.navPhase = 'locked';
     this.navLock = true;
-
-    // 记录相对位姿：自转天体用其世界四元数，公转为主的天体用恒等锚点
-    tmpV1.copy(this.shipState.position).sub(wp);
-    if (t.selfRotating) {
-      t.mesh.getWorldQuaternion(tmpQ1);
-      tmpQ2.copy(tmpQ1).invert();
+    this._navPrevWp = null;
+    // 保存该目标的最佳观赏参数（下次导航同一目标直接复用）
+    if (!this.savedView || this.savedView.target !== t.name) {
       this.savedView = {
         target: t.name,
-        selfRotating: true,
-        relPos: tmpV1.clone().applyQuaternion(tmpQ2),
-        relQ: this.shipState.quaternion.clone().premultiply(tmpQ2)
-      };
-    } else {
-      this.savedView = {
-        target: t.name,
-        selfRotating: false,
-        relPosAnchor: tmpV1.clone(),
-        relQAnchor: this.shipState.quaternion.clone()
+        dist: t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0),
+        yOff: t.radius * 0.45,
+        lateral: t.radius * 0.35
       };
     }
     this._persistViewLock();
     this.navMessage = { text: `已锁定 ${t.name} 最佳观赏点，随行星转动持续追踪`, tone: 'ok', at: Date.now() };
   }
 
-  /* ---------- 观赏锁定：随行星运动持续追踪 ---------- */
-  _updateViewLock() {
+  /* ---------- 观赏锁定：随行星公转/自转持续追踪 ---------- */
+  _updateViewLock(dt) {
     const t = this.navTarget;
     if (!t) return;
     const wp = t.mesh.getWorldPosition(tmpV1);
-    if (t.selfRotating && this.savedView) {
-      t.mesh.getWorldQuaternion(tmpQ1);
-      this.shipState.position.copy(wp).add(tmpV2.copy(this.savedView.relPos).applyQuaternion(tmpQ1));
-      this.shipState.quaternion.copy(tmpQ1).multiply(this.savedView.relQ);
-    } else if (this.savedView) {
-      this.shipState.position.copy(wp).add(this.savedView.relPosAnchor);
-      this.shipState.quaternion.copy(this.savedView.relQAnchor);
-    }
+    this._computeViewPosition(wp, t, tmpV2);
+    const k = 1 - Math.exp(-8 * dt);
+    this.shipState.position.lerp(tmpV2, k);
+    this._aimNoseAt(wp);
+    this.shipState.quaternion.slerp(this._aimQ, k);
   }
 
   _persistViewLock() {
     if (!this.savedView || !this.navTarget) return;
     try {
-      const s = this.savedView;
-      const data = {
-        target: s.target,
-        selfRotating: s.selfRotating,
-        relPos: (s.relPos || s.relPosAnchor).toArray(),
-        relQ: (s.relQ || s.relQAnchor).toArray()
-      };
-    } catch (e) { /* 隐私模式等场景下静默降级 */ }
+      localStorage.setItem(VIEW_LOCK_KEY, JSON.stringify(this.savedView));
+    } catch (e) { /* 隐私模式下静默降级 */ }
   }
 
   _loadSavedView() {
     try {
+      const raw = localStorage.getItem(VIEW_LOCK_KEY);
       if (!raw) return null;
       const d = JSON.parse(raw);
-      if (!d || !d.target) return null;
-      if (d.selfRotating) {
-        return {
-          target: d.target,
-          selfRotating: true,
-          relPos: new THREE.Vector3().fromArray(d.relPos),
-          relQ: new THREE.Quaternion().fromArray(d.relQ)
-        };
-      }
+      if (!d || typeof d.target !== 'string' || typeof d.dist !== 'number') return null;
       return {
         target: d.target,
-        selfRotating: false,
-        relPosAnchor: new THREE.Vector3().fromArray(d.relPos),
-        relQAnchor: new THREE.Quaternion().fromArray(d.relQ)
+        dist: d.dist,
+        yOff: typeof d.yOff === 'number' ? d.yOff : 0,
+        lateral: typeof d.lateral === 'number' ? d.lateral : 0
       };
     } catch (e) {
       return null;
