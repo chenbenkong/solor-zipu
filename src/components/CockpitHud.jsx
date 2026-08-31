@@ -24,6 +24,9 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
     if (!el) return;
     const r = el.getBoundingClientRect();
     stickState.current = { active: true, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 };
+    // 挂到 window：快速拖出摇杆盘也不丢事件
+    window.addEventListener('mousemove', stickMove);
+    window.addEventListener('mouseup', stickEnd);
     stickMove(e);
   };
   const stickMove = (e) => {
@@ -41,6 +44,8 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
     onStickRoll(Math.abs(nx) > 0.92 ? nx * 0.8 : 0);
   };
   const stickEnd = () => {
+    window.removeEventListener('mousemove', stickMove);
+    window.removeEventListener('mouseup', stickEnd);
     stickState.current.active = false;
     setKnob({ x: 0, y: 0, on: false });
     onStick(0, 0);
@@ -56,6 +61,8 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
     if (!el) return;
     const r = el.getBoundingClientRect();
     thrState.current = { active: true, h: r.height - 26, top: r.top };
+    window.addEventListener('mousemove', thrMove);
+    window.addEventListener('mouseup', thrEnd);
     thrMove(e);
   };
   const thrMove = (e) => {
@@ -67,7 +74,11 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
     setThrottle(clamped);
     onStickThrottle(clamped);
   };
-  const thrEnd = () => { thrState.current.active = false; };
+  const thrEnd = () => {
+    window.removeEventListener('mousemove', thrMove);
+    window.removeEventListener('mouseup', thrEnd);
+    thrState.current.active = false;
+  };
 
   /* ---------- 第三视角环绕拖拽（在画布上拖动可 360° 环绕） ---------- */
   useEffect(() => {
@@ -124,9 +135,6 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
         ref={stickRef}
         className={'virt-stick' + (knob.on ? ' active' : '')}
         onMouseDown={stickStart}
-        onMouseMove={stickMove}
-        onMouseUp={stickEnd}
-        onMouseLeave={stickEnd}
         onTouchStart={stickStart}
         onTouchMove={stickMove}
         onTouchEnd={stickEnd}
@@ -142,9 +150,6 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
         ref={thrRef}
         className="virt-throttle"
         onMouseDown={thrStart}
-        onMouseMove={thrMove}
-        onMouseUp={thrEnd}
-        onMouseLeave={thrEnd}
         onTouchStart={thrStart}
         onTouchMove={thrMove}
         onTouchEnd={thrEnd}

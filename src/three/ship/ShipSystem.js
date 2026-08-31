@@ -638,6 +638,9 @@ export class ShipSystem {
       if (k) {
         this._input[k] = true;
         if (e.code.startsWith('Arrow')) e.preventDefault();
+        if (['forward', 'back', 'yawLeft', 'yawRight', 'pitchUp', 'pitchDown'].includes(k)) {
+          this._engageManual();
+        }
       }
     };
     this._onKeyUp = (e) => {
@@ -660,14 +663,28 @@ export class ShipSystem {
   setStick(x, y) {
     this._stickX = THREE.MathUtils.clamp(x, -1, 1);
     this._stickY = THREE.MathUtils.clamp(y, -1, 1);
+    this._engageManual();
   }
 
   setStickRoll(v) {
     this._stickRoll = THREE.MathUtils.clamp(v, -1, 1);
+    this._engageManual();
   }
 
   setStickThrottle(v) {
     this._stickThrottle = THREE.MathUtils.clamp(v, 0, 1);
+    this._engageManual();
+  }
+
+  // 手动输入自动接管：摇杆/油门/键盘任一有效输入时，从悬停或自动驾驶切入自由驾驶
+  _engageManual() {
+    if (this.mode === 'cruise') return;
+    const engaged =
+      Math.abs(this._stickX) > 0.15 ||
+      Math.abs(this._stickY) > 0.15 ||
+      Math.abs(this._stickRoll) > 0.15 ||
+      this._stickThrottle > 0.06;
+    if (engaged) this.setFlightMode('cruise');
   }
 
   getChaseOrbit() {
