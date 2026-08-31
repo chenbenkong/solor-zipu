@@ -327,8 +327,8 @@ export class ShipSystem {
     // 姿态输入：摇杆（模拟量）+ 键盘（开关量）叠加
     // 注意：机头 +Z / 上 +Y 的右手系中 +X 是飞船左侧，故摇杆右推（+x）需取负才右转；
     // 摇杆上推（y<0）取正加给 pitch 才抬头（与键盘 ↑ 一致）
-    const yaw = (input.yawLeft ? 1 : 0) - (input.yawRight ? 1 : 0) - this._stickX;
-    const pitch = (input.pitchDown ? 1 : 0) - (input.pitchUp ? 1 : 0) + this._stickY;
+    const yaw = (input.yawLeft ? 1 : 0) - (input.yawRight ? 1 : 0) + this._stickX; // 实测校准：+x 右推 = 机头右转（yaw 减少）
+    const pitch = (input.pitchDown ? 1 : 0) - (input.pitchUp ? 1 : 0) - this._stickY; // 实测校准：上推（sy<0）= 抬头（pitch 增加）
     const roll = (input.rollLeft ? 1 : 0) - (input.rollRight ? 1 : 0) + this._stickRoll;
 
     tmpQ1.setFromAxisAngle(tmpV1.set(0, 1, 0), yaw * this.turnRate * dt);
