@@ -427,6 +427,10 @@ export class ShipSystem {
     side.normalize();
 
     let dist = t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0);
+    // 卫星近观：半径太小（<8）时按绝对距离拉近距离，保证表面细节占满视野
+    if (t.kind === 'moon' && t.radius < 8) {
+      dist = Math.max(t.radius * 3.2, 9);
+    }
     let yOff = t.radius * 0.45;
     let lateral = t.radius * 0.35;
     if (this.savedView && this.savedView.target === t.name) {
