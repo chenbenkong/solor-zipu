@@ -427,7 +427,7 @@ export class ShipSystem {
     side.normalize();
 
     let dist = t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0);
-    // 卫星近观：半径太小（<8）时按绝对距离拉近距离，保证表面细节占满视野
+    // 卫星近观：半径太小（<8）时按绝对距离拉近，保证表面细节占满视野
     if (t.kind === 'moon' && t.radius < 8) {
       dist = Math.max(t.radius * 3.2, 9);
     }
@@ -460,9 +460,11 @@ export class ShipSystem {
     this._lockPrevAnchor = null;
     // 保存该目标的最佳观赏参数（下次导航同一目标直接复用）
     if (!this.savedView || this.savedView.target !== t.name) {
+      // 小卫星近观：按绝对距离拉近，贴图细节才能占满画面
+      const moonClose = t.kind === 'moon' && t.radius < 8;
       this.savedView = {
         target: t.name,
-        dist: t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0),
+        dist: moonClose ? Math.max(t.radius * 3.2, 9) : t.radius * (t.kind === 'star' ? 2.2 : this.viewFactor) + (t.kind === 'moon' ? 6 : 0),
         yOff: t.radius * 0.45,
         lateral: t.radius * 0.35
       };
