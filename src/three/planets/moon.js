@@ -38,7 +38,7 @@ export function createMoon(planetRadius, manager, config = {}) {
 
   if (texGenerator) {
     // Procedural texture: generate synchronously on canvas
-    const proceduralTex = texGenerator(512);
+    const proceduralTex = texGenerator(1024);
     proceduralTex.colorSpace = THREE.SRGBColorSpace;
     proceduralTex.anisotropy = 8;
 
@@ -51,7 +51,7 @@ export function createMoon(planetRadius, manager, config = {}) {
     });
 
     // Generate procedural normal map from the texture
-    const normalTex = buildNormalMapFromTexture(proceduralTex, 512);
+    const normalTex = buildNormalMapFromTexture(proceduralTex, 1024);
     if (normalTex) {
       moonMaterial.normalMap = normalTex;
       moonMaterial.normalScale = new THREE.Vector2(1.2, 1.2);
@@ -59,7 +59,7 @@ export function createMoon(planetRadius, manager, config = {}) {
   } else {
     // File-based texture (Moon uses moon.jpg)
     const textureLoader = new THREE.TextureLoader(manager);
-    const moonTexture = textureLoader.load(BASE + 'textures/moon.jpg');
+    const moonTexture = textureLoader.load(BASE + 'textures/moon_hd.jpg');
     moonTexture.colorSpace = THREE.SRGBColorSpace;
     moonTexture.anisotropy = 8;
 
@@ -81,7 +81,7 @@ export function createMoon(planetRadius, manager, config = {}) {
       moonMaterial.normalScale = new THREE.Vector2(1.4, 1.4);
       moonMaterial.needsUpdate = true;
     };
-    img.src = BASE + 'textures/moon.jpg';
+    img.src = BASE + 'textures/moon_hd.jpg';
   }
 
   const moon = new THREE.Mesh(moonGeometry, moonMaterial);

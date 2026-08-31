@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 
 /**
- * Procedural moon texture generator — canvas-based, no external images needed.
- * Each moon gets a distinctive look via layered noise + color ramping.
+ * 高真实感卫星贴图生成器 v2 —— canvas 程序化绘制
+ * 相比 v1 的单层噪声+色彩渐变，v2 加入：
+ *  - 多层域扭曲 fbm（domain warping），产生流状真实地貌
+ *  - 几何级陨石坑绘制（带撞击溅射纹、中央峰、边缘明暗），符合月球/木卫三/木卫四真实地貌
+ *  - 线状裂纹网络（欧罗巴脊线、土卫二虎纹）用随机游走绘制，非正弦近似
+ *  - 火山斑点/熔流（木卫一）用径向渐变 + 周围染色环
+ *  - 经纬球面映射校正（极区压缩）
+ * 分辨率 1024，配 normalMap 由 moon.js 的 Sobel 流水线生成。
  */
 
 function createCanvas(w, h) {
@@ -12,27 +18,23 @@ function createCanvas(w, h) {
   return c;
 }
 
-// Simple seeded PRNG for deterministic noise
 function mulberry32(a) {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    t = Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
 
-// Value noise 2D
 function valueNoise(x, y, rand) {
   const ix = Math.floor(x), iy = Math.floor(y);
   const fx = x - ix, fy = y - iy;
   const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-
   const hash = (a, b) => {
     const n = (a * 374761393 + b * 668265263) | 0;
     return rand(((n ^ (n >> 13)) & 0x7fffffff) % 10000) * 2 - 1;
   };
-
   const n00 = hash(ix, iy), n10 = hash(ix + 1, iy);
   const n01 = hash(ix, iy + 1), n11 = hash(ix + 1, iy + 1);
   const nx0 = n00 + (n10 - n00) * sx;
@@ -45,306 +47,379 @@ function fbm(x, y, octaves, rand) {
   for (let i = 0; i < octaves; i++) {
     val += amp * valueNoise(x * freq, y * freq, rand);
     amp *= 0.5;
-    freq *= 2.0;
+    freq *= 2.05;
   }
   return val;
 }
 
-function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
-
-/**
- * Io — sulfurous yellow-orange with volcanic dark spots and white frost
- */
-export function generateIoTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(42);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 8, v * 8, 6, rand);
-      const n2 = fbm(u * 12 + 10, v * 12 + 10, 4, rand);
-      const n3 = fbm(u * 20 + 20, v * 20 + 20, 3, rand);
-
-      // Base: sulfurous yellow-orange
-      let r = 210 + n1 * 40;
-      let g = 170 + n1 * 30 - n2 * 25;
-      let b = 60 + n3 * 30;
-
-      // Volcanic dark patches (low noise regions)
-      const volcanic = smoothstep(-0.1, 0.1, n2);
-      r = lerp(80, r, volcanic);
-      g = lerp(50, g, volcanic);
-      b = lerp(30, b, volcanic);
-
-      // White sulfur frost (high noise peaks)
-      const frost = smoothstep(0.35, 0.55, n3);
-      r = lerp(r, 240, frost * 0.6);
-      g = lerp(g, 235, frost * 0.6);
-      b = lerp(b, 220, frost * 0.5);
-
-      // Red volcanic caldera spots
-      const caldera = smoothstep(0.2, 0.35, fbm(u * 30 + 50, v * 30 + 50, 2, rand));
-      r = lerp(r, 180, caldera * 0.7);
-      g = lerp(g, 40, caldera * 0.7);
-      b = lerp(b, 20, caldera * 0.7);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
-}
-
-/**
- * Europa — icy white-blue with reddish-brown crack lines
- */
-export function generateEuropaTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(77);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 6, v * 6, 5, rand);
-      const n2 = fbm(u * 15 + 5, v * 15 + 5, 4, rand);
-      // Line network: use high-freq noise ridges
-      const lineX = Math.abs(Math.sin((u * 25 + n1 * 3) * Math.PI));
-      const lineY = Math.abs(Math.sin((v * 20 + n2 * 2.5) * Math.PI));
-      const crack = 1 - Math.min(lineX, lineY);
-      const crackMask = smoothstep(0.85, 0.95, crack);
-
-      // Base: bright icy white-blue
-      let r = 215 + n1 * 20;
-      let g = 220 + n1 * 15;
-      let b = 235 + n1 * 10;
-
-      // Slightly darker regions (subsurface texture)
-      const depth = smoothstep(-0.2, 0.3, n2);
-      r = lerp(195, r, depth);
-      g = lerp(200, g, depth);
-      b = lerp(215, b, depth);
-
-      // Red-brown cracks
-      r = lerp(r, 160, crackMask * 0.8);
-      g = lerp(g, 70, crackMask * 0.8);
-      b = lerp(b, 40, crackMask * 0.7);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
-}
-
-/**
- * Ganymede — grey-brown with lighter crater regions and dark maria
- */
-export function generateGanymedeTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(123);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 7, v * 7, 6, rand);
-      const n2 = fbm(u * 14 + 20, v * 14 + 20, 5, rand);
-      const n3 = fbm(u * 25 + 40, v * 25 + 40, 3, rand);
-
-      // Base: medium grey-brown
-      let r = 145 + n1 * 30;
-      let g = 135 + n1 * 25;
-      let b = 120 + n1 * 20;
-
-      // Bright cratered highlands
-      const highland = smoothstep(0.15, 0.4, n2);
-      r = lerp(r, 185, highland * 0.5);
-      g = lerp(g, 175, highland * 0.5);
-      b = lerp(b, 160, highland * 0.4);
-
-      // Darker maria (smooth lowlands)
-      const maria = smoothstep(0.0, 0.2, -n2);
-      r = lerp(r, 95, maria * 0.5);
-      g = lerp(g, 85, maria * 0.5);
-      b = lerp(b, 75, maria * 0.4);
-
-      // Fresh bright crater rays
-      const ray = smoothstep(0.4, 0.6, n3);
-      r = lerp(r, 200, ray * 0.3);
-      g = lerp(g, 195, ray * 0.3);
-      b = lerp(b, 185, ray * 0.3);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
-}
-
-/**
- * Callisto — very dark heavily cratered surface with bright white ray craters
- */
-export function generateCallistoTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(256);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 8, v * 8, 6, rand);
-      const n2 = fbm(u * 20 + 30, v * 20 + 30, 5, rand);
-      const n3 = fbm(u * 40 + 60, v * 40 + 60, 3, rand);
-
-      // Base: very dark grey-brown
-      let r = 65 + n1 * 25;
-      let g = 58 + n1 * 20;
-      let b = 50 + n1 * 18;
-
-      // Crater density variations
-      const cratered = smoothstep(-0.15, 0.15, n2);
-      r = lerp(r, 50, cratered * 0.3);
-      g = lerp(g, 44, cratered * 0.3);
-      b = lerp(b, 38, cratered * 0.3);
-
-      // Bright impact rays (Vesta-like)
-      const rayBright = smoothstep(0.3, 0.5, n3);
-      r = lerp(r, 200, rayBright * 0.5);
-      g = lerp(g, 195, rayBright * 0.5);
-      b = lerp(b, 185, rayBright * 0.4);
-
-      // Occasional icy patch
-      const ice = smoothstep(0.5, 0.7, fbm(u * 10 + 80, v * 10 + 80, 2, rand));
-      r = lerp(r, 180, ice * 0.3);
-      g = lerp(g, 185, ice * 0.3);
-      b = lerp(b, 195, ice * 0.3);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
-}
-
-/**
- * Titan — opaque orange haze, no surface visible (thick atmosphere)
- */
-export function generateTitanTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(333);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 5, v * 5, 5, rand);
-      const n2 = fbm(u * 8 + 15, v * 8 + 15, 4, rand);
-
-      // Deep orange haze layers
-      let r = 210 + n1 * 30;
-      let g = 150 + n1 * 25 + n2 * 15;
-      let b = 50 + n2 * 30;
-
-      // Darker equatorial band
-      const lat = Math.abs(v - 0.5) * 2;
-      const band = smoothstep(0.3, 0.6, lat);
-      r = lerp(r, 180, band * 0.3);
-      g = lerp(g, 120, band * 0.3);
-      b = lerp(b, 40, band * 0.3);
-
-      // Subtle high-altitude haze brightening
-      const haze = smoothstep(0.0, 0.5, n1);
-      r = lerp(r, 230, haze * 0.2);
-      g = lerp(g, 175, haze * 0.2);
-      b = lerp(b, 70, haze * 0.15);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
-}
-
-/**
- * Enceladus — very bright white ice with subtle blue tiger stripes
- */
-export function generateEnceladusTexture(size = 512) {
-  const cvs = createCanvas(size, size);
-  const ctx = cvs.getContext('2d');
-  const img = ctx.createImageData(size, size);
-  const rand = mulberry32(512);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n1 = fbm(u * 6, v * 6, 5, rand);
-      const n2 = fbm(u * 12 + 10, v * 12 + 10, 4, rand);
-
-      // Base: brilliant white ice
-      let r = 235 + n1 * 15;
-      let g = 238 + n1 * 12;
-      let b = 242 + n1 * 10;
-
-      // Subtle grey terrain variation
-      const terrain = smoothstep(-0.2, 0.2, n2);
-      r = lerp(215, r, terrain);
-      g = lerp(218, g, terrain);
-      b = lerp(225, b, terrain);
-
-      // Blue tiger stripe fractures (south pole region)
-      const stripe = Math.abs(Math.sin((u * 15 + n1 * 2) * Math.PI));
-      const stripeMask = smoothstep(0.9, 0.98, stripe) * smoothstep(0.7, 1.0, v);
-      r = lerp(r, 140, stripeMask * 0.5);
-      g = lerp(g, 170, stripeMask * 0.5);
-      b = lerp(b, 220, stripeMask * 0.6);
-
-      const i = (y * size + x) * 4;
-      img.data[i] = clamp(r, 0, 255);
-      img.data[i + 1] = clamp(g, 0, 255);
-      img.data[i + 2] = clamp(b, 0, 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return new THREE.CanvasTexture(cvs);
+// 域扭曲 fbm：地貌流动性大幅提升
+function warpedFbm(x, y, octaves, rand, warp = 1.2) {
+  const qx = fbm(x + 1.7, y + 9.2, 3, rand);
+  const qy = fbm(x + 8.3, y + 2.8, 3, rand);
+  return fbm(x + warp * qx, y + warp * qy, octaves, rand);
 }
 
 function smoothstep(edge0, edge1, x) {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+
+// 在 canvas 上绘制一颗陨石坑（球面近似：纬度越高横向越扁）
+function drawCrater(ctx, size, cx, cy, r, rand, opts = {}) {
+  const { rimLight = 'rgba(255,255,255,0.35)', rimDark = 'rgba(0,0,0,0.4)', floor = 'rgba(0,0,0,0.28)', rays = 0, rayColor = 'rgba(255,255,255,0.5)' } = opts;
+  const latScale = 1 / Math.max(0.35, Math.sin((cy / size) * Math.PI)); // 极区横向压缩补偿
+  const rx = r * Math.min(2.2, latScale);
+
+  // 溅射纹（先画，在坑缘外侧）
+  if (rays > 0) {
+    ctx.save();
+    for (let i = 0; i < rays; i++) {
+      const ang = rand() * Math.PI * 2;
+      const len = r * (1.6 + rand() * 2.2);
+      ctx.globalAlpha = 0.12 + rand() * 0.15;
+      ctx.strokeStyle = rayColor;
+      ctx.lineWidth = Math.max(1, r * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * rx * 0.8, cy + Math.sin(ang) * r * 0.8);
+      ctx.lineTo(cx + Math.cos(ang) * rx * 0.8 + Math.cos(ang) * len * latScale, cy + Math.sin(ang) * r * 0.8 + Math.sin(ang) * len);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 坑底
+  let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, r));
+  g.addColorStop(0, floor);
+  g.addColorStop(0.72, 'rgba(0,0,0,0.14)');
+  g.addColorStop(0.92, rimDark);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx * 1.06, r * 1.06, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 中央峰（大坑才有）
+  if (r > 9 && rand() > 0.4) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = rimLight;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.16, r * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // 边缘高光（光照方向：左上）
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = rimLight;
+  ctx.lineWidth = Math.max(1, r * 0.09);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, r, 0, Math.PI * 0.95, Math.PI * 1.75);
+  ctx.stroke();
+  // 边缘阴影（右下）
+  ctx.globalAlpha = 0.45;
+  ctx.strokeStyle = rimDark;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, r, 0, Math.PI * 0.1, Math.PI * 0.9);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// 球面均匀采样位置（避免极区过密）
+function spherePoints(count, size, rand) {
+  const pts = [];
+  for (let i = 0; i < count; i++) {
+    const v = Math.acos(2 * rand() - 1) / Math.PI; // 0..1 均匀纬度
+    const u = rand();
+    pts.push({ x: u * size, y: v * size, r: v });
+  }
+  return pts;
+}
+
+// 通用基础贴图：域扭曲 fbm 底色
+function baseTexture(size, rand, colorFn) {
+  const cvs = createCanvas(size, size);
+  const ctx = cvs.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size, v = y / size;
+      const [r, g, b] = colorFn(u, v, rand);
+      const i = (y * size + x) * 4;
+      img.data[i] = clamp(r, 0, 255);
+      img.data[i + 1] = clamp(g, 0, 255);
+      img.data[i + 2] = clamp(b, 0, 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return cvs;
 }
 
 /**
- * Map moon name to its texture generator
+ * 木卫一 Io —— 硫磺黄橙 + 火山黑斑 + 熔流 + 白霜，无陨石坑（潮汐加热不断翻新地表）
+ */
+export function generateIoTexture(size = 1024) {
+  const rand = mulberry32(42);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 7, v * 7, 6, rnd, 1.6);
+    const n2 = warpedFbm(u * 13 + 5, v * 13 + 5, 5, rnd, 1.2);
+    const n3 = fbm(u * 28 + 20, v * 28 + 20, 3, rnd);
+
+    let r = 215 + n1 * 35;
+    let g = 175 + n1 * 30 - n2 * 20;
+    let b = 55 + n3 * 25;
+
+    // 大块火山平原（暗色区域，如 Loki 熔湖）
+    const volcanic = smoothstep(-0.05, 0.15, n2);
+    r = lerp(70, r, volcanic);
+    g = lerp(45, g, volcanic);
+    b = lerp(28, b, volcanic);
+
+    // 白霜高地
+    const frost = smoothstep(0.32, 0.55, n3);
+    r = lerp(r, 245, frost * 0.65);
+    g = lerp(g, 240, frost * 0.6);
+    b = lerp(b, 225, frost * 0.55);
+    return [r, g, b];
+  });
+  const ctx = cvs.getContext('2d');
+
+  // 火山口：红环 + 熔流
+  const rand2 = mulberry32(4242);
+  const spots = spherePoints(26, size, rand2);
+  spots.forEach(pt => {
+    const r = 6 + rand2() * 16;
+    const g = ctx.createRadialGradient(pt.x, pt.y * (0.3 + 0.7 * Math.sin(pt.r * Math.PI)) + size * 0.35, 0, pt.x, pt.y, r);
+    g.addColorStop(0, 'rgba(40,10,5,0.95)');           // 黑火山口
+    g.addColorStop(0.35, 'rgba(150,45,15,0.75)');      // 红热环
+    g.addColorStop(0.7, 'rgba(220,120,40,0.35)');      // 橙色溅射
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    // 部分火山有长熔流
+    if (rand2() > 0.55) {
+      const ang = rand2() * Math.PI * 2;
+      const len = r * (2 + rand2() * 4);
+      const lg = ctx.createLinearGradient(pt.x, pt.y, pt.x + Math.cos(ang) * len, pt.y + Math.sin(ang) * len);
+      lg.addColorStop(0, 'rgba(160,50,20,0.6)');
+      lg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.strokeStyle = lg;
+      ctx.lineWidth = r * 0.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
+      ctx.lineTo(pt.x + Math.cos(ang) * len, pt.y + Math.sin(ang) * len);
+      ctx.stroke();
+    }
+  });
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 木卫二 Europa —— 亮冰面 + 线状裂纹网（Lineae），裂纹随机游走绘制
+ */
+export function generateEuropaTexture(size = 1024) {
+  const rand = mulberry32(77);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 6, v * 6, 5, rnd, 1.0);
+    const n2 = fbm(u * 16 + 8, v * 16 + 8, 4, rnd);
+    let r = 218 + n1 * 18;
+    let g = 224 + n1 * 14;
+    let b = 235 + n1 * 12;
+    const terrain = smoothstep(-0.25, 0.3, n2);
+    r = lerp(198, r, terrain);
+    g = lerp(205, g, terrain);
+    b = lerp(220, b, terrain);
+    return [r, g, b];
+  });
+  const ctx = cvs.getContext('2d');
+
+  // 裂纹网：随机游走脊线，双色（深棕主脊 + 浅棕细纹）
+  const rand2 = mulberry32(777);
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 46; i++) {
+    const wide = i < 18;
+    let x = rand2() * size;
+    let y = rand2() * size;
+    let ang = rand2() * Math.PI * 2;
+    const segs = 40 + rand2() * 60;
+    ctx.strokeStyle = wide ? 'rgba(150,72,40,0.55)' : 'rgba(170,105,70,0.35)';
+    ctx.lineWidth = wide ? 2.2 + rand2() * 2.4 : 0.8 + rand2() * 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let s = 0; s < segs; s++) {
+      ang += (rand2() - 0.5) * 0.85;
+      const step = 6 + rand2() * 12;
+      x = (x + Math.cos(ang) * step + size) % size;
+      y = (y + Math.sin(ang) * step + size) % size;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 木卫三 Ganymede —— 双色地貌（亮沟槽区 + 暗撞击平原）+ 大量陨石坑
+ */
+export function generateGanymedeTexture(size = 1024) {
+  const rand = mulberry32(123);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 6, v * 6, 6, rnd, 1.5);
+    const n2 = warpedFbm(u * 12 + 20, v * 12 + 20, 5, rnd, 1.1);
+    let r = 150 + n1 * 28;
+    let g = 140 + n1 * 24;
+    let b = 125 + n1 * 20;
+    // sulcus（沟槽亮带）
+    const sulcus = smoothstep(0.12, 0.38, n2);
+    r = lerp(r, 192, sulcus * 0.55);
+    g = lerp(g, 182, sulcus * 0.55);
+    b = lerp(b, 168, sulcus * 0.5);
+    // dark terrain
+    const dark = smoothstep(0.0, 0.25, -n2);
+    r = lerp(r, 92, dark * 0.55);
+    g = lerp(g, 84, dark * 0.55);
+    b = lerp(b, 74, dark * 0.5);
+    return [r, g, b];
+  });
+  const ctx = cvs.getContext('2d');
+  const rand2 = mulberry32(1234);
+  // 沟槽细纹（grooves）：长平行细线簇
+  for (let c = 0; c < 14; c++) {
+    let x = rand2() * size, y = rand2() * size;
+    const ang = rand2() * Math.PI;
+    const lines = 5 + rand2() * 10;
+    const len = 60 + rand2() * 140;
+    ctx.strokeStyle = 'rgba(205,195,178,0.28)';
+    ctx.lineWidth = 1.2;
+    for (let l = 0; l < lines; l++) {
+      const off = (l - lines / 2) * 5;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(ang + Math.PI / 2) * off, y + Math.sin(ang + Math.PI / 2) * off);
+      ctx.lineTo(x + Math.cos(ang) * len + Math.cos(ang + Math.PI / 2) * off, y + Math.sin(ang) * len + Math.sin(ang + Math.PI / 2) * off);
+      ctx.stroke();
+    }
+  }
+  // 陨石坑
+  const craters = spherePoints(130, size, rand2);
+  craters.forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 2 + rand2() * 13, rand2, { rays: rand2() > 0.85 ? 7 : 0 });
+  });
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 木卫四 Callisto —— 太阳系最密集陨石坑表面，暗底 + 亮溅射大坑（Valhalla 风格）
+ */
+export function generateCallistoTexture(size = 1024) {
+  const rand = mulberry32(256);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 7, v * 7, 6, rnd, 1.3);
+    const n2 = fbm(u * 22 + 30, v * 22 + 30, 4, rnd);
+    let r = 68 + n1 * 22;
+    let g = 60 + n1 * 18;
+    let b = 52 + n1 * 15;
+    const ice = smoothstep(0.45, 0.68, fbm(u * 9 + 80, v * 9 + 80, 2, rnd));
+    r = lerp(r, 165, ice * 0.3);
+    g = lerp(g, 172, ice * 0.3);
+    b = lerp(b, 185, ice * 0.35);
+    const bright = smoothstep(0.3, 0.55, n2);
+    r = lerp(r, 120, bright * 0.35);
+    g = lerp(g, 114, bright * 0.35);
+    b = lerp(b, 106, bright * 0.35);
+    return [r, g, b];
+  });
+  const ctx = cvs.getContext('2d');
+  const rand2 = mulberry32(256256);
+  // 密集陨石坑（三层：大、中、小）
+  spherePoints(24, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 16 + rand2() * 26, rand2, { rays: 12, rayColor: 'rgba(235,230,220,0.55)' });
+  });
+  spherePoints(90, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 5 + rand2() * 12, rand2, { rays: rand2() > 0.7 ? 6 : 0 });
+  });
+  spherePoints(340, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 1.5 + rand2() * 4.5, rand2);
+  });
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 土卫六 Titan —— 均匀浓橙雾（几乎无地貌），细微高层雾流
+ */
+export function generateTitanTexture(size = 1024) {
+  const rand = mulberry32(333);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 5, v * 5, 5, rnd, 0.8);
+    const n2 = fbm(u * 9 + 15, v * 9 + 15, 4, rnd);
+    let r = 212 + n1 * 26;
+    let g = 152 + n1 * 22 + n2 * 12;
+    let b = 52 + n2 * 26;
+    const lat = Math.abs(v - 0.5) * 2;
+    const band = smoothstep(0.25, 0.6, lat);
+    r = lerp(r, 182, band * 0.32);
+    g = lerp(g, 122, band * 0.32);
+    b = lerp(b, 42, band * 0.32);
+    const haze = smoothstep(0.0, 0.55, n1);
+    r = lerp(r, 232, haze * 0.22);
+    g = lerp(g, 178, haze * 0.2);
+    b = lerp(b, 72, haze * 0.14);
+    return [r, g, b];
+  });
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 土卫二 Enceladus —— 纯净亮冰 + 南极虎纹（蓝绿裂缝）+ 微凹地形
+ */
+export function generateEnceladusTexture(size = 1024) {
+  const rand = mulberry32(512);
+  const cvs = baseTexture(size, rand, (u, v, rnd) => {
+    const n1 = warpedFbm(u * 6, v * 6, 5, rnd, 0.9);
+    const n2 = fbm(u * 14 + 10, v * 14 + 10, 4, rnd);
+    let r = 236 + n1 * 14;
+    let g = 240 + n1 * 11;
+    let b = 244 + n1 * 9;
+    const terrain = smoothstep(-0.2, 0.22, n2);
+    r = lerp(216, r, terrain);
+    g = lerp(220, g, terrain);
+    b = lerp(226, b, terrain);
+    return [r, g, b];
+  });
+  const ctx = cvs.getContext('2d');
+  // 虎纹：南极区（v > 0.72）四条平行主裂缝，随机游走
+  const rand2 = mulberry32(512512);
+  for (let i = 0; i < 5; i++) {
+    let x = size * (0.2 + i * 0.15) + rand2() * 40;
+    let y = size * (0.74 + rand2() * 0.05);
+    let ang = Math.PI / 2 + (rand2() - 0.5) * 0.5;
+    ctx.strokeStyle = 'rgba(90,150,200,0.5)';
+    ctx.lineWidth = 3 + rand2() * 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let s = 0; s < 30; s++) {
+      ang += (rand2() - 0.5) * 0.4;
+      x = (x + Math.cos(ang) * 10 + size) % size;
+      y += Math.sin(ang) * 8;
+      if (y > size) break;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  // 少量细小坑
+  spherePoints(40, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 1.5 + rand2() * 4, rand2);
+  });
+  return new THREE.CanvasTexture(cvs);
+}
+
+/**
+ * 映射卫星名 → 生成器
  */
 export const MOON_TEXTURE_GENERATORS = {
   '木卫一（伊奥）': generateIoTexture,
@@ -353,5 +428,5 @@ export const MOON_TEXTURE_GENERATORS = {
   '木卫四（卡里斯托）': generateCallistoTexture,
   '土卫六（泰坦）': generateTitanTexture,
   '土卫二（恩克拉多斯）': generateEnceladusTexture,
-  '月球': null, // uses moon.jpg texture
+  '月球': null, // 月球使用 moon.jpg 真实贴图
 };

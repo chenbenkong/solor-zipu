@@ -342,14 +342,37 @@ export function createStarship(envMap) {
   mfdR.position.x = 0.85;
   consoleGroup.add(mfdR);
 
-  // 操纵杆
-  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.5, 8), darkMat);
-  stick.position.set(0, 0.55, 2.35);
-  stick.rotation.x = 0.25;
+  // 操纵杆（全息风格：金属杆身 + 青色发光环 + 底座光环）
+  const stickBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.05, 16), darkMat);
+  stickBase.position.set(0, 0.32, 2.32);
+  consoleGroup.add(stickBase);
+  const stickGlowRing = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.016, 8, 24), new THREE.MeshBasicMaterial({ color: 0x57e6ff }));
+  stickGlowRing.position.set(0, 0.35, 2.32);
+  stickGlowRing.rotation.x = Math.PI / 2;
+  consoleGroup.add(stickGlowRing);
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.036, 0.46, 10), new THREE.MeshStandardMaterial({
+    color: 0x2a3a48,
+    metalness: 0.85,
+    roughness: 0.3,
+    envMap: envMap || null,
+    envMapIntensity: 0.8
+  }));
+  stick.position.set(0, 0.58, 2.34);
+  stick.rotation.x = 0.18;
   consoleGroup.add(stick);
-  const grip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), redMat);
-  grip.position.set(0, 0.8, 2.28);
+  const grip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 12), new THREE.MeshStandardMaterial({
+    color: 0x1d2c38,
+    metalness: 0.72,
+    roughness: 0.32,
+    envMap: envMap || null,
+    envMapIntensity: 0.9
+  }));
+  grip.position.set(0, 0.8, 2.3);
   consoleGroup.add(grip);
+  const gripGlow = new THREE.Mesh(new THREE.TorusGeometry(0.064, 0.009, 8, 20), new THREE.MeshBasicMaterial({ color: 0x57e6ff }));
+  gripGlow.position.set(0, 0.8, 2.3);
+  gripGlow.rotation.x = Math.PI / 2;
+  consoleGroup.add(gripGlow);
 
   // 座舱内饰框架拱（透过舷窗可见的边缘结构）
   const intArchGeo = new THREE.TorusGeometry(1.28, 0.075, 10, 28, Math.PI);
