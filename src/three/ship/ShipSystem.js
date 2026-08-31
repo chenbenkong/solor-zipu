@@ -591,7 +591,12 @@ export class ShipSystem {
       if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
       const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
       this._chasePrevAnchor.copy(tmpV1);
-      cam.position.lerp(tmpV1, 1 - Math.exp(-8 * dt)).add(chaseDelta);
+      // 锁定观赏时硬绑定（无平滑滞后），保证星球稳定占满画面；平时保留平滑
+      if (this.navLock && this.navTarget) {
+        cam.position.copy(tmpV1).add(chaseDelta);
+      } else {
+        cam.position.lerp(tmpV1, 1 - Math.exp(-8 * dt)).add(chaseDelta);
+      }
       tmpV2.set(0, 0.6, 1.5).applyQuaternion(q).add(pos);
       tmpM1.lookAt(cam.position, tmpV2, tmpV3.set(0, 1, 0).applyQuaternion(q));
       tmpQ1.setFromRotationMatrix(tmpM1);
