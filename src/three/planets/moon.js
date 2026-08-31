@@ -98,6 +98,11 @@ export function createMoon(planetRadius, manager, config = {}) {
   const moonOrbit = new THREE.Mesh(moonOrbitGeometry, moonOrbitMaterial);
   moonOrbit.rotation.x = Math.PI / 2;
 
+  // 卫星专属柔光：太阳直射过强时保证贴图细节可见（不改变行星光照）
+  const moonFill = new THREE.PointLight(0xbfd4ff, 0.85, moonRadius * 30, 2);
+  moon.add(moonFill);
+  moonFill.position.set(moonRadius * 4, moonRadius * 3, moonRadius * 5);
+
   return {
     moon,
     moonOrbit,
