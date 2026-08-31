@@ -577,8 +577,15 @@ export class ShipSystem {
       cam.position.y += (Math.random() - 0.5) * shake;
     } else {
       // 第三视角：环绕机位（拖动可 360° 环绕飞船），完整全貌 + 位置前馈
+      // 观赏锁定时自动收紧相机距离：保证目标星球在画面中的存在感
+      const effDist = (this.navLock && this.navTarget)
+        ? Math.min(this._chaseDist, Math.max(this._chaseDist * 0.42, 6))
+        : this._chaseDist;
       tmpV1.set(
-        Math.sin(this._chaseOrbit) * this._chaseDist,
+        Math.sin(this._chaseOrbit) * effDist,
+        Math.sin(this._chaseElev) * effDist * 0.45 + 3.2,
+        -Math.cos(this._chaseOrbit) * effDist
+      ).applyQuaternion(q).add(pos);
         Math.sin(this._chaseElev) * this._chaseDist * 0.45 + 3.2,
         -Math.cos(this._chaseOrbit) * this._chaseDist
       ).applyQuaternion(q).add(pos);
