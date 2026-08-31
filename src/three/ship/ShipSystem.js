@@ -325,8 +325,8 @@ export class ShipSystem {
     this._cruiseSpeed = next;
 
     // 姿态输入：摇杆（模拟量）+ 键盘（开关量）叠加
-    // 本地系推导：机头+Z/上+Y 右手系中驾驶员右侧 = forward×up = -X，
-    // 故右推(sx>0)=负偏航输入、上推(sy<0)=负俯仰输入、右压滚转=负滚转输入
+    // multiply() 为本地系叠加：本地系绕 +Y 正角 = 左转、绕 +X 正角 = 低头、绕 +Z 正角 = 右翼下沉
+    // 映射：右推(sx>0)右转 → yaw=-sx；上推(sy<0)抬头 → pitch=+sy；右压滚转右倾 → roll 输入取负
     const yaw = (input.yawLeft ? 1 : 0) - (input.yawRight ? 1 : 0) - this._stickX;
     const pitch = (input.pitchDown ? 1 : 0) - (input.pitchUp ? 1 : 0) + this._stickY;
     const roll = (input.rollLeft ? 1 : 0) - (input.rollRight ? 1 : 0) - this._stickRoll;
