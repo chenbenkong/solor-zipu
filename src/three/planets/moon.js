@@ -23,8 +23,8 @@ export function createMoon(planetRadius, manager, config = {}) {
     distanceRatio = 2.0,
     orbitSpeed = 2.0,
     rotationSpeed = 0.0003,
-    emissive = 0x222222,
-    emissiveIntensity = 0.12
+    emissive = 0x000000,
+    emissiveIntensity = 0.0
   } = config;
 
   const moonRadius = planetRadius * radiusRatio;
