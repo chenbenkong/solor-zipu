@@ -72,6 +72,7 @@ export class ShipSystem {
     this._consoleTarget = true;
 
     const built = createStarship(this.envMap);
+    if (typeof window !== 'undefined') window.__shipDbg = this;
     this.ship = built.group;
     this.shipParts = built;
     this.ship.visible = false;
@@ -349,6 +350,13 @@ export class ShipSystem {
       } else {
         this.shipState.position.addScaledVector(dirSafe, step);
       }
+      if (this._time - this._jumpStart > 18) {
+        // 跳跃超时兜底：目标被碰撞守卫圈保护时（如水星在太阳守卫圈内），强制进入接近段
+        this.navPhase = 'approach';
+        this._navPrevWp = wp.clone();
+        this._navApproachStart = this._time;
+        this._navPrevDesired = null;
+      }
     } else if (this.navPhase === 'approach') {
       // 接近段：滑向最佳观赏点 + 锚点增量前馈（同时覆盖公转位移与锚点旋转，消除稳态滞后）
       const desired = this._computeViewPosition(wp, t, tmpV3).clone();
@@ -399,6 +407,14 @@ export class ShipSystem {
     }
     out.copy(wp).addScaledVector(dir, dist).addScaledVector(side, lateral);
     out.y += yOff;
+    // 太阳守卫圈钳制：观赏点不得落在太阳碰撞守卫圈内（水星轨道在守卫圈内的兜底）
+    if (this.sun && t.kind !== 'star') {
+      const sunGuard = 300 * 1.3 + 12;
+      const dSun = out.distanceTo(SUN_TMP);
+      if (dSun < sunGuard) {
+        out.sub(SUN_TMP).setLength(sunGuard).add(SUN_TMP);
+      }
+    }
     return out;
   }
 
