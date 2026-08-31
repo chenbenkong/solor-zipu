@@ -21,7 +21,7 @@
   pointer-events: none;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
-.cockpit-hud button { pointer-events: auto; }
+.cockpit-hud button, .cockpit-hud .virt-stick, .cockpit-hud .virt-throttle { pointer-events: auto; }
 
 /* ---------- 退出按钮 ---------- */
 .cockpit-exit {
