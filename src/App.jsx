@@ -392,12 +392,12 @@ export default function App() {
 
       <div ref={containerRef} className="canvas-container" />
 
-      {!cinemaMode && (
+      {!cinemaMode && !shipMode && (
         <>
           <Header zoomLevel={globalScale} speedLevel={timeSpeed} isPaused={isPaused} />
           <StatusDisplay zoomLevel={globalScale} speedLevel={timeSpeed} />
           <PlanetLabels positions={planetPositions} />
-          <NavigationPanel onSelect={(name) => (shipMode ? sceneRef.current?.shipNavTo(name) : sceneRef.current?.focusByName(name))} />
+          <NavigationPanel onSelect={(name) => sceneRef.current?.focusByName(name)} />
           <PlanetInfo
             celestial={selectedCelestial}
             onClose={handleCloseInfo}
@@ -429,16 +429,18 @@ export default function App() {
         </>
       )}
 
-      {/* 影院模式切换按钮：始终可见 */}
-      <button
-        className="cinema-btn"
-        onClick={() => setCinemaMode(prev => !prev)}
-        title={cinemaMode ? '退出影院模式 (Esc)' : '影院模式：隐藏所有 UI'}
-      >
-        {cinemaMode ? '✕' : '◎'}
-      </button>
+      {/* 影院模式切换按钮：太阳系模式可见（飞船模式隐藏，避免遮挡驾驶舱 HUD） */}
+      {!shipMode && (
+        <button
+          className="cinema-btn"
+          onClick={() => setCinemaMode(prev => !prev)}
+          title={cinemaMode ? '退出影院模式 (Esc)' : '影院模式：隐藏所有 UI'}
+        >
+          {cinemaMode ? '✕' : '◎'}
+        </button>
+      )}
 
-      {/* 星际飞船模式入口：底部控制栏内的「星隼号」按钮（ControlPanel） */}
+      {/* 飞船模式入口已移至底部控制栏（ControlPanel） */}
 
       {/* 飞船驾驶舱 HUD */}
       {shipMode && shipHud && (
