@@ -579,10 +579,27 @@ export class ShipSystem {
       cam.position.y += (Math.random() - 0.5) * shake;
     } else {
       // 第三视角：环绕机位（拖动可 360° 环绕飞船），完整全貌 + 位置前馈
-      // 观赏锁定时相机距离 = 目标半径 × 2.6（星球约占画面 40%），且不小于 6
-      const effDist = (this.navLock && this.navTarget)
-        ? Math.min(this._chaseDist, Math.max(this.navTarget.radius * 2.6, 6))
-        : this._chaseDist;
+      // 观赏锁定时：相机放到「飞船侧前方、面向星球」，飞船剪影与星球同框
+      if (this.navLock && this.navTarget) {
+        const t2 = this.navTarget;
+        const wp2 = t2.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
+        const toShip = tmpV2.subVectors(pos, wp2).normalize(); // 星球→飞船 单位向量
+        const dist2 = Math.max(t2.radius * 2.6, 6);
+        // 相机 = 星球与飞船连线方向上、位于飞船更外侧一点，并抬高
+        tmpV1.copy(pos).addScaledVector(toShip, dist2 * 0.9);
+        tmpV1.y += dist2 * 0.35;
+        if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
+        const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
+        this._chasePrevAnchor.copy(tmpV1);
+        cam.position.copy(tmpV1).add(chaseDelta);
+        // 相机看向星球（飞船为前景剪影）
+        tmpM1.lookAt(cam.position, wp2, tmpV3.set(0, 1, 0));
+        tmpQ1.setFromRotationMatrix(tmpM1);
+        cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-10 * dt));
+        this._cameraInsideGuard();
+        return;
+      }
+      const effDist = this._chaseDist;
       tmpV1.set(
         Math.sin(this._chaseOrbit) * effDist,
         Math.sin(this._chaseElev) * effDist * 0.45 + 3.2,
