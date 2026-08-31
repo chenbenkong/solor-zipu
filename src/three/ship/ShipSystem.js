@@ -586,9 +586,6 @@ export class ShipSystem {
         Math.sin(this._chaseElev) * effDist * 0.45 + 3.2,
         -Math.cos(this._chaseOrbit) * effDist
       ).applyQuaternion(q).add(pos);
-        Math.sin(this._chaseElev) * this._chaseDist * 0.45 + 3.2,
-        -Math.cos(this._chaseOrbit) * this._chaseDist
-      ).applyQuaternion(q).add(pos);
       if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
       const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
       this._chasePrevAnchor.copy(tmpV1);
