@@ -62,6 +62,8 @@ export class ShipSystem {
     this._prevPos = new THREE.Vector3();
     this._navPrevWp = null;
     this._navApproachStart = 0;
+    this._navPrevDesired = null;
+    this._lockPrevAnchor = null;
     this._savedCamPos = null;
     this._savedCamTarget = null;
     this._saveAccum = 0;
@@ -129,6 +131,8 @@ export class ShipSystem {
       this.navPhase = 'idle';
       this.navTarget = null;
       this._navPrevWp = null;
+      this._navPrevDesired = null;
+      this._lockPrevAnchor = null;
       this.navMessage = { text: '已切换手动模式，自动驾驶解除', tone: 'info', at: Date.now() };
     }
   }
@@ -164,6 +168,8 @@ export class ShipSystem {
     this.navPhase = 'jump';
     this._jumpFrom.copy(this.shipState.position);
     this._jumpStart = this._time;
+    this._navPrevDesired = null;
+    this._lockPrevAnchor = null;
 
     // 已有保存的最佳观赏位置 → 直接复用（不重新计算）
     const saved = this._loadSavedView();
@@ -179,6 +185,8 @@ export class ShipSystem {
   cancelNav() {
     this.navTarget = null;
     this._navPrevWp = null;
+    this._navPrevDesired = null;
+    this._lockPrevAnchor = null;
     this.navPhase = 'idle';
     this.navLock = false;
     this.mode = 'cruise';
@@ -337,24 +345,25 @@ export class ShipSystem {
         this.navPhase = 'approach';
         this._navPrevWp = wp.clone();
         this._navApproachStart = this._time;
+        this._navPrevDesired = null;
       } else {
         this.shipState.position.addScaledVector(dirSafe, step);
       }
     } else if (this.navPhase === 'approach') {
-      // 接近段：滑向最佳观赏点 + 目标公转速度前馈（防止快速内行星追摆）+ 超时兜底
-      if (!this._navPrevWp) this._navPrevWp = wp.clone();
-      const targetDelta = tmpV2.subVectors(wp, this._navPrevWp);
-      this._navPrevWp.copy(wp);
+      // 接近段：滑向最佳观赏点 + 锚点增量前馈（同时覆盖公转位移与锚点旋转，消除稳态滞后）
       const desired = this._computeViewPosition(wp, t, tmpV3).clone();
+      if (!this._navPrevDesired) this._navPrevDesired = desired.clone();
+      const anchorDelta = tmpV2.subVectors(desired, this._navPrevDesired);
+      this._navPrevDesired.copy(desired);
       const gap = this.shipState.position.distanceTo(desired);
-      const k = 1 - Math.exp(-1.8 * dt);
-      this.shipState.position.lerp(desired, k).add(targetDelta);
+      const k = 1 - Math.exp(-2.2 * dt);
+      this.shipState.position.lerp(desired, k).add(anchorDelta);
       this._aimNoseAt(wp);
       this.shipState.quaternion.copy(this._aimQ);
 
-      if (gap < Math.max(t.radius * 0.12, 4) || this._time - this._navApproachStart > 22) {
-        // 超时兜底：直接吸附到观赏点，防止无限追摆
-        if (this._time - this._navApproachStart > 22) {
+      if (gap < Math.max(t.radius * 0.12, 4) || this._time - this._navApproachStart > 15) {
+        // 超时兜底：直接吸附到观赏点，防止快速目标无限追摆
+        if (this._time - this._navApproachStart > 15) {
           this.shipState.position.copy(this._computeViewPosition(wp, t, tmpV3));
         }
         this._enterViewLock(wp);
@@ -398,6 +407,8 @@ export class ShipSystem {
     this.navPhase = 'locked';
     this.navLock = true;
     this._navPrevWp = null;
+    this._navPrevDesired = null;
+    this._lockPrevAnchor = null;
     // 保存该目标的最佳观赏参数（下次导航同一目标直接复用）
     if (!this.savedView || this.savedView.target !== t.name) {
       this.savedView = {
@@ -417,8 +428,12 @@ export class ShipSystem {
     if (!t) return;
     const wp = t.mesh.getWorldPosition(tmpV1);
     this._computeViewPosition(wp, t, tmpV2);
+    // 锚点前馈：观赏点随行星公转/锚点几何变化而动，前馈完全跟随，锁定零滞后
+    if (!this._lockPrevAnchor) this._lockPrevAnchor = tmpV2.clone();
+    const anchorDelta = tmpV3.subVectors(tmpV2, this._lockPrevAnchor);
+    this._lockPrevAnchor.copy(tmpV2);
     const k = 1 - Math.exp(-8 * dt);
-    this.shipState.position.lerp(tmpV2, k);
+    this.shipState.position.lerp(tmpV2, k).add(anchorDelta);
     this._aimNoseAt(wp);
     this.shipState.quaternion.slerp(this._aimQ, k);
   }
