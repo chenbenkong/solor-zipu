@@ -579,7 +579,7 @@ export class ShipSystem {
       // 第三视角：环绕机位（拖动可 360° 环绕飞船），完整全貌 + 位置前馈
       // 观赏锁定时自动收紧相机距离：保证目标星球在画面中的存在感
       const effDist = (this.navLock && this.navTarget)
-        ? Math.min(this._chaseDist, Math.max(this._chaseDist * 0.42, 6))
+        ? Math.min(this._chaseDist, Math.max(this.navTarget.radius * 3.2, 7))
         : this._chaseDist;
       tmpV1.set(
         Math.sin(this._chaseOrbit) * effDist,
