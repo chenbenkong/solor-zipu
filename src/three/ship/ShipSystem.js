@@ -440,6 +440,27 @@ export class ShipSystem {
     }
     out.copy(wp).addScaledVector(dir, dist).addScaledVector(side, lateral);
     out.y += yOff;
+    // 母行星遮挡规避：观赏小卫星时，若卫星背阳锚点正对母行星巨脸，绕到侧面锚点
+    if (t.kind === 'moon' && !this.savedView) {
+      for (const pl of this.planetMeshes) {
+        if (!pl.moons || !pl.moons.length) continue;
+        const isParent = pl.moons.some(me => me.mesh === t.mesh);
+        if (!isParent) continue;
+        const pp = pl.mesh.getWorldPosition(new THREE.Vector3());
+        // 卫星→母行星 方向；若观赏锚点与该方向夹角小（锚点朝向母行星），则旋转锚点 90°
+        const toParent = pp.clone().sub(wp).normalize();
+        const toView = out.clone().sub(wp).normalize();
+        if (toParent.dot(toView) < -0.25) {
+          // 锚点在母行星背后 → 换到垂直方向（公转切向），同时保留与母行星同框的可能
+          const tangent = new THREE.Vector3().crossVectors(toParent, UP_AXIS);
+          if (tangent.lengthSq() < 1e-6) tangent.set(0, 0, 1);
+          tangent.normalize();
+          out.copy(wp).addScaledVector(tangent, dist).addScaledVector(side, lateral);
+          out.y += yOff;
+        }
+        break;
+      }
+    }
     // 太阳守卫圈钳制：观赏点不得落在太阳碰撞守卫圈内（水星轨道在守卫圈内的兜底）
     if (this.sun && t.kind !== 'star') {
       const sunGuard = 300 * 1.3 + 12;
