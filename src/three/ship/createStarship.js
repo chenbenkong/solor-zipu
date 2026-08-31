@@ -318,35 +318,38 @@ export function createStarship(envMap) {
   });
 
   /* ---------------- 座舱内饰（第一视角专用） ---------------- */
+  const consoleGroup = new THREE.Group();
+  interior.add(consoleGroup);
+
   // 仪表台
   const dash = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.52, 0.7), darkMat);
   dash.position.set(0, 0.28, 2.75);
   dash.rotation.x = -0.28;
-  interior.add(dash);
+  consoleGroup.add(dash);
 
   // 主显示屏（琥珀色 FUI 风格）
   const mainScreen = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.34), new THREE.MeshBasicMaterial({ color: 0xffb040 }));
   mainScreen.position.set(0, 0.44, 2.62);
   mainScreen.rotation.x = -0.28;
-  interior.add(mainScreen);
+  consoleGroup.add(mainScreen);
 
   // 左右多功能屏（青色）
   const mfdL = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.3), new THREE.MeshBasicMaterial({ color: 0x57e6ff }));
   mfdL.position.set(-0.85, 0.42, 2.66);
   mfdL.rotation.x = -0.28;
-  interior.add(mfdL);
+  consoleGroup.add(mfdL);
   const mfdR = mfdL.clone();
   mfdR.position.x = 0.85;
-  interior.add(mfdR);
+  consoleGroup.add(mfdR);
 
   // 操纵杆
   const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.5, 8), darkMat);
   stick.position.set(0, 0.55, 2.35);
   stick.rotation.x = 0.25;
-  interior.add(stick);
+  consoleGroup.add(stick);
   const grip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), redMat);
   grip.position.set(0, 0.8, 2.28);
-  interior.add(grip);
+  consoleGroup.add(grip);
 
   // 座舱内饰框架拱（透过舷窗可见的边缘结构）
   const intArchGeo = new THREE.TorusGeometry(1.28, 0.075, 10, 28, Math.PI);
@@ -371,7 +374,7 @@ export function createStarship(envMap) {
   // 座舱地板
   const floor = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 2.6), darkMat);
   floor.position.set(0, 0.05, 1.2);
-  interior.add(floor);
+  consoleGroup.add(floor);
 
   exterior.traverse(o => { o.frustumCulled = true; });
 
@@ -384,6 +387,7 @@ export function createStarship(envMap) {
     engineLights,
     engineTrails,
     innerGlass,
+    console: consoleGroup,
     // 油门 0~1：驱动喷口亮度与尾焰长度
     setThrottle(t) {
       const k = Math.max(0, Math.min(1, t));

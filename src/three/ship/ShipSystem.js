@@ -70,6 +70,8 @@ export class ShipSystem {
     this._time = 0;
     this.consoleVisible = true;
     this._consoleTarget = true;
+    this._camBlend = 1;
+    this._chasePrevAnchor = null;
 
     const built = createStarship(this.envMap);
     if (typeof window !== 'undefined') window.__shipDbg = this;
@@ -104,6 +106,9 @@ export class ShipSystem {
     this._aimNoseAt(tmpV1.set(0, 0, 0));
     this.shipState.quaternion.copy(this._aimQ);
     this.ship.visible = true;
+    if (this.shipParts.console) this.shipParts.console.visible = this.consoleVisible;
+    this._camBlend = 0;
+    this._chasePrevAnchor = null;
     this._prevPos.copy(this.shipState.position);
     // 相机接管前的原相机位姿（退出时恢复）
     this._savedCamPos = this.camera.position.clone();
@@ -141,15 +146,20 @@ export class ShipSystem {
   setCameraMode(m) {
     if (m !== 'chase' && m !== 'cockpit') return;
     this.cameraMode = m;
+    this._camBlend = 0;
+    this._chasePrevAnchor = null;
   }
 
   toggleCameraMode() {
     this.cameraMode = this.cameraMode === 'chase' ? 'cockpit' : 'chase';
+    this._camBlend = 0;
+    this._chasePrevAnchor = null;
   }
 
   setConsoleVisible(v) {
     this.consoleVisible = !!v;
     this._consoleTarget = !!v;
+    if (this.shipParts && this.shipParts.console) this.shipParts.console.visible = !!v;
   }
 
   toggleConsole() {
@@ -521,6 +531,7 @@ export class ShipSystem {
 
   /* ---------- 相机 ---------- */
   _updateCamera(dt) {
+    this._camBlend = Math.min(1, this._camBlend + dt * 3);
     const cam = this.camera;
     const pos = this.ship.position; // 平滑后的渲染位姿
     const q = this.shipRenderQ;
@@ -537,27 +548,31 @@ export class ShipSystem {
     if (this.cameraMode === 'cockpit') {
       // 第一视角：视点在气泡舷窗内，视线与机头一致（透过巨型舷窗观景）
       tmpV1.set(0, 1.15, 1.35).applyQuaternion(q).add(pos);
-      cam.position.lerp(tmpV1, 1 - Math.exp(-22 * dt));
+      cam.position.lerp(tmpV1, this._camBlend);
       // 相机沿 -Z 观察：叠加 180 度翻转让视线透过机头(+Z)巨型舷窗
       tmpQ1.setFromAxisAngle(tmpV1.set(0, 1, 0), Math.PI);
       tmpQ2.copy(q).multiply(tmpQ1);
-      cam.quaternion.slerp(tmpQ2, 1 - Math.exp(-16 * dt));
+      cam.quaternion.slerp(tmpQ2, this._camBlend);
       // 微弱引擎震感
       const shake = this.throttle * 0.012;
       cam.position.x += (Math.random() - 0.5) * shake;
       cam.position.y += (Math.random() - 0.5) * shake;
     } else {
-      // 第三视角：后上方追踪机头方向
-      tmpV1.set(0, 3.2, -11).applyQuaternion(q).add(pos);
-      cam.position.lerp(tmpV1, 1 - Math.exp(-6 * dt));
-      tmpV2.set(0, 0.8, 10).applyQuaternion(q).add(pos);
+      // 第三视角：侧后方 3/4 视角，完整呈现飞船全貌；位置前馈消除速度掉队
+      tmpV1.set(13, 3.2, -6).applyQuaternion(q).add(pos);
+      if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
+      const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
+      this._chasePrevAnchor.copy(tmpV1);
+      cam.position.lerp(tmpV1, 1 - Math.exp(-8 * dt)).add(chaseDelta);
+      tmpV2.set(0, 0.6, 1.5).applyQuaternion(q).add(pos);
       tmpM1.lookAt(cam.position, tmpV2, tmpV3.set(0, 1, 0).applyQuaternion(q));
       tmpQ1.setFromRotationMatrix(tmpM1);
-      cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-8 * dt));
+      cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-10 * dt));
     }
 
     // 景观模式下相机缓慢环绕（只有 orbit 模式用）
     if (this.mode === 'orbit' && this.cameraMode === 'chase') {
+      this._chasePrevAnchor = null;
       this.orbitAngle += dt * 0.1;
       const r = this.orbitRadius;
       tmpV1.set(Math.sin(this.orbitAngle) * r, 4.2, Math.cos(this.orbitAngle) * r).add(pos);
