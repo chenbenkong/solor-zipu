@@ -329,16 +329,16 @@ export class ShipSystem {
     const wp = t.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
 
     if (this.navPhase === 'jump') {
-      // 跳跃段：纯追踪（每帧从当前位置指向目标，公转目标也能平滑追上）+ 近距减速坡道
-      const stopDist = t.radius * (t.kind === 'star' ? 2.6 : 6) + 40;
-      const rawDist = this.shipState.position.distanceTo(wp);
-      const remain = rawDist - stopDist;
-      const dir = tmpV2.subVectors(wp, this.shipState.position);
+      // 跳跃段：直接飞向最佳观赏锚点（向阳面 + 太阳守卫圈外钳制），纯追踪 + 近距减速坡道
+      const anchor = this._computeViewPosition(wp, t, tmpV3).clone();
+      const stopDist = Math.max(t.radius * 0.4, 6);
+      const remain = this.shipState.position.distanceTo(anchor) - stopDist;
+      const dir = tmpV2.subVectors(anchor, this.shipState.position);
       if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
       dir.normalize();
       const dirSafe = dir.clone(); // 防止后续临时向量计算覆写共享 tmpV2
 
-      // 机头对准航向
+      // 机头对准目标行星（观赏朝向）
       this._aimNoseAt(wp);
       this.shipState.quaternion.copy(this._aimQ);
 
@@ -356,7 +356,7 @@ export class ShipSystem {
         this.shipState.position.addScaledVector(dirSafe, step);
       }
       if (this._time - this._jumpStart > 18) {
-        // 跳跃超时兜底：目标被碰撞守卫圈保护时（如水星在太阳守卫圈内），强制进入接近段
+        // 跳跃超时兜底：锚点被意外遮挡时强制进入接近段
         this.navPhase = 'approach';
         this._navPrevWp = wp.clone();
         this._navApproachStart = this._time;
