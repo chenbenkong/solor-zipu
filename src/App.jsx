@@ -329,6 +329,22 @@ export default function App() {
     sceneRef.current?.shipCancelNav();
   }, []);
 
+  const handleShipStick = useCallback((x, y) => {
+    sceneRef.current?.shipStick?.(x, y);
+  }, []);
+
+  const handleShipStickRoll = useCallback((v) => {
+    sceneRef.current?.shipStickRoll?.(v);
+  }, []);
+
+  const handleShipThrottle = useCallback((v) => {
+    sceneRef.current?.shipThrottle?.(v);
+  }, []);
+
+  const handleShipOrbit = useCallback((dTheta, dElev, zoomFactor) => {
+    sceneRef.current?.shipOrbit?.(dTheta, dElev, zoomFactor);
+  }, []);
+
   // 进入黑洞体验：挂起太阳系渲染（省 GPU），卸载时恢复
   const handleEnterBlackHole = useCallback(() => {
     setBlackHoleMode(true);
@@ -453,6 +469,10 @@ export default function App() {
           onToggleConsole={handleShipConsole}
           onCancelNav={handleShipCancelNav}
           onExit={handleExitShipMode}
+          onStick={handleShipStick}
+          onStickRoll={handleShipStickRoll}
+          onStickThrottle={handleShipThrottle}
+          onOrbit={handleShipOrbit}
         />
       )}
 

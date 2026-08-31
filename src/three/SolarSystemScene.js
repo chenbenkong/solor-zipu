@@ -1020,6 +1020,24 @@ export class SolarSystemScene {
     if (this.shipSystem) this.shipSystem.toggleConsole();
   }
 
+  shipStick(x, y) {
+    if (this.shipSystem) this.shipSystem.setStick(x, y);
+  }
+
+  shipStickRoll(v) {
+    if (this.shipSystem) this.shipSystem.setStickRoll(v);
+  }
+
+  shipThrottle(v) {
+    if (this.shipSystem) this.shipSystem.setStickThrottle(v);
+  }
+
+  shipOrbit(dTheta, dElev, zoomFactor) {
+    if (!this.shipSystem) return;
+    if (zoomFactor) this.shipSystem.zoomChase(zoomFactor);
+    else this.shipSystem.orbitChase(dTheta || 0, dElev || 0);
+  }
+
   dispose() {
     if (this.shipSystem) {
       this.shipSystem.dispose();

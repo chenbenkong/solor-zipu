@@ -72,6 +72,13 @@ export class ShipSystem {
     this._consoleTarget = true;
     this._camBlend = 1;
     this._chasePrevAnchor = null;
+    this._stickX = 0;            // 摇杆横向 -1~1：左右转向
+    this._stickY = 0;            // 摇杆纵向 -1~1：俯仰
+    this._stickRoll = 0;         // 摇杆侧向滚转（左右平移键）
+    this._stickThrottle = 0;     // 虚拟油门 0~1
+    this._chaseOrbit = 0;        // 第三视角环绕角（弧度，可 360° 旋转）
+    this._chaseElev = 0.24;      // 第三视角仰角系数
+    this._chaseDist = 26;        // 第三视角距离（拉近感调校）
 
     const built = createStarship(this.envMap);
     if (typeof window !== 'undefined') window.__shipDbg = this;
@@ -300,8 +307,13 @@ export class ShipSystem {
     if (isPaused) return;
     const input = this._input || {};
     let thrust = 0;
-    if (input.forward) thrust += 1;
-    if (input.back) thrust -= 0.5;
+    if (this._stickThrottle > 0) {
+      // 虚拟油门：0~1 持续推力（摇杆 UI 控制）
+      thrust = this._stickThrottle;
+    } else {
+      if (input.forward) thrust += 1;
+      if (input.back) thrust -= 0.5;
+    }
 
     // 油门与速度
     const targetSpeed = thrust > 0
@@ -312,10 +324,10 @@ export class ShipSystem {
     const next = cur + THREE.MathUtils.clamp(targetSpeed - cur, -rate * dt, rate * dt);
     this._cruiseSpeed = next;
 
-    // 姿态输入
-    const yaw = (input.yawLeft ? 1 : 0) - (input.yawRight ? 1 : 0);
-    const pitch = (input.pitchDown ? 1 : 0) - (input.pitchUp ? 1 : 0);
-    const roll = (input.rollLeft ? 1 : 0) - (input.rollRight ? 1 : 0);
+    // 姿态输入：摇杆（模拟量）+ 键盘（开关量）叠加
+    const yaw = (input.yawLeft ? 1 : 0) - (input.yawRight ? 1 : 0) + this._stickX;
+    const pitch = (input.pitchDown ? 1 : 0) - (input.pitchUp ? 1 : 0) - this._stickY;
+    const roll = (input.rollLeft ? 1 : 0) - (input.rollRight ? 1 : 0) + this._stickRoll;
 
     tmpQ1.setFromAxisAngle(tmpV1.set(0, 1, 0), yaw * this.turnRate * dt);
     this.shipState.quaternion.multiply(tmpQ1);
@@ -558,8 +570,12 @@ export class ShipSystem {
       cam.position.x += (Math.random() - 0.5) * shake;
       cam.position.y += (Math.random() - 0.5) * shake;
     } else {
-      // 第三视角：侧后方 3/4 视角，完整呈现飞船全貌；位置前馈消除速度掉队
-      tmpV1.set(13, 3.2, -6).applyQuaternion(q).add(pos);
+      // 第三视角：环绕机位（拖动可 360° 环绕飞船），完整全貌 + 位置前馈
+      tmpV1.set(
+        Math.sin(this._chaseOrbit) * this._chaseDist,
+        Math.sin(this._chaseElev) * this._chaseDist * 0.45 + 3.2,
+        -Math.cos(this._chaseOrbit) * this._chaseDist
+      ).applyQuaternion(q).add(pos);
       if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
       const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
       this._chasePrevAnchor.copy(tmpV1);
@@ -637,6 +653,36 @@ export class ShipSystem {
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
     this._input = {};
+  }
+
+  /* ---------- 虚拟摇杆接口（React UI 调用） ---------- */
+
+  setStick(x, y) {
+    this._stickX = THREE.MathUtils.clamp(x, -1, 1);
+    this._stickY = THREE.MathUtils.clamp(y, -1, 1);
+  }
+
+  setStickRoll(v) {
+    this._stickRoll = THREE.MathUtils.clamp(v, -1, 1);
+  }
+
+  setStickThrottle(v) {
+    this._stickThrottle = THREE.MathUtils.clamp(v, 0, 1);
+  }
+
+  getChaseOrbit() {
+    return { orbit: this._chaseOrbit, elev: this._chaseElev, dist: this._chaseDist };
+  }
+
+  orbitChase(dTheta, dElev) {
+    this._chaseOrbit += dTheta;
+    this._chaseElev = THREE.MathUtils.clamp(this._chaseElev + dElev, -0.55, 0.85);
+    this._chasePrevAnchor = null;
+  }
+
+  zoomChase(factor) {
+    this._chaseDist = THREE.MathUtils.clamp(this._chaseDist * factor, 16, 90);
+    this._chasePrevAnchor = null;
   }
 
   /* ---------- HUD 状态 ---------- */

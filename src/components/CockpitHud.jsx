@@ -9,10 +9,91 @@ import React, { useEffect, useRef, useState } from 'react';
  *  - 底部全息控制台：可点击收起/展开；内含 飞行模式 / 导航目标 / 视角切换 / 速度条
  *  - 顶部状态条：速度 / 目标 / 锁定状态 / 模式
  */
-export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onToggleConsole, onCancelNav, onExit, planets }) {
+export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onToggleConsole, onCancelNav, onExit, onStick, onStickRoll, onStickThrottle, onOrbit, planets }) {
   const [navOpen, setNavOpen] = useState(false);
   const hudRef = useRef(hud);
   useEffect(() => { hudRef.current = hud; }, [hud]);
+
+  /* ---------- 虚拟摇杆（鼠标/触屏通用） ---------- */
+  const stickRef = useRef(null);
+  const stickState = useRef({ active: false, cx: 0, cy: 0, r: 0 });
+  const [knob, setKnob] = useState({ x: 0, y: 0, on: false });
+
+  const stickStart = (e) => {
+    const el = stickRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    stickState.current = { active: true, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 };
+    stickMove(e);
+  };
+  const stickMove = (e) => {
+    const st = stickState.current;
+    if (!st.active) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const dx = (pt.clientX - st.cx) / st.r;
+    const dy = (pt.clientY - st.cy) / st.r;
+    const len = Math.hypot(dx, dy);
+    const k = len > 1 ? 1 / len : 1;
+    const nx = dx * k, ny = dy * k;
+    setKnob({ x: nx, y: ny, on: true });
+    onStick(nx, ny);
+    // 摇杆左右推到底时附加滚转（空战手感）
+    onStickRoll(Math.abs(nx) > 0.92 ? nx * 0.8 : 0);
+  };
+  const stickEnd = () => {
+    stickState.current.active = false;
+    setKnob({ x: 0, y: 0, on: false });
+    onStick(0, 0);
+    onStickRoll(0);
+  };
+
+  /* ---------- 虚拟油门杆（右侧上下拖动） ---------- */
+  const [throttle, setThrottle] = useState(0);
+  const thrRef = useRef(null);
+  const thrState = useRef({ active: false, h: 0, top: 0 });
+  const thrStart = (e) => {
+    const el = thrRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    thrState.current = { active: true, h: r.height - 26, top: r.top };
+    thrMove(e);
+  };
+  const thrMove = (e) => {
+    const st = thrState.current;
+    if (!st.active) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const v = 1 - (pt.clientY - st.top - 13) / st.h;
+    const clamped = Math.max(0, Math.min(1, v));
+    setThrottle(clamped);
+    onStickThrottle(clamped);
+  };
+  const thrEnd = () => { thrState.current.active = false; };
+
+  /* ---------- 第三视角环绕拖拽（在画布上拖动可 360° 环绕） ---------- */
+  useEffect(() => {
+    if (!hud || hud.cameraMode !== 'chase') return;
+    let dragging = false, lx = 0, ly = 0;
+    const down = (e) => { if (e.button === 0) { dragging = true; lx = e.clientX; ly = e.clientY; } };
+    const move = (e) => {
+      if (!dragging) return;
+      onOrbit((e.clientX - lx) * 0.008, -(e.clientY - ly) * 0.005);
+      lx = e.clientX; ly = e.clientY;
+    };
+    const up = () => { dragging = false; };
+    const wheel = (e) => { onOrbit(0, 0, e.deltaY > 0 ? 1.08 : 0.93); };
+    const canvas = document.querySelector('.canvas-container canvas');
+    if (!canvas) return;
+    canvas.addEventListener('mousedown', down);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    canvas.addEventListener('wheel', wheel, { passive: true });
+    return () => {
+      canvas.removeEventListener('mousedown', down);
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      canvas.removeEventListener('wheel', wheel);
+    };
+  }, [hud, onOrbit]);
 
   const active = hud && hud.mode === 'nav' && hud.navTarget;
 
@@ -37,6 +118,43 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
     <div className="cockpit-hud" data-cameramode={hud ? hud.cameraMode : 'chase'}>
       {/* 退出飞船模式 */}
       <button className="cockpit-exit" onClick={onExit} title="退出飞船模式 (Esc)">✕ 退出飞船</button>
+
+      {/* 左下虚拟摇杆：拖动控制转向/俯仰（鼠标+触屏） */}
+      <div
+        ref={stickRef}
+        className={'virt-stick' + (knob.on ? ' active' : '')}
+        onMouseDown={stickStart}
+        onMouseMove={stickMove}
+        onMouseUp={stickEnd}
+        onMouseLeave={stickEnd}
+        onTouchStart={stickStart}
+        onTouchMove={stickMove}
+        onTouchEnd={stickEnd}
+      >
+        <div className="vs-ring" />
+        <div className="vs-cross" />
+        <div className="vs-knob" style={{ transform: `translate(${knob.x * 30}px, ${knob.y * 30}px)` }} />
+        <span className="vs-label">操纵杆</span>
+      </div>
+
+      {/* 右下虚拟油门杆：上推加速 / 下拉减速 */}
+      <div
+        ref={thrRef}
+        className="virt-throttle"
+        onMouseDown={thrStart}
+        onMouseMove={thrMove}
+        onMouseUp={thrEnd}
+        onMouseLeave={thrEnd}
+        onTouchStart={thrStart}
+        onTouchMove={thrMove}
+        onTouchEnd={thrEnd}
+      >
+        <div className="vt-track">
+          <div className="vt-fill" style={{ height: (throttle * 100) + '%' }} />
+          <div className="vt-handle" style={{ bottom: (throttle * 100) + '%' }} />
+        </div>
+        <span className="vt-label">油门 {Math.round(throttle * 100)}%</span>
+      </div>
 
       {/* 巨型透明舷窗相框：第一视角可见，中央透明可观景 */}
       <div className="viewport-frame">
@@ -162,6 +280,11 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
         )}
       </div>
 
+      {/* 第三视角提示（拖动环绕） */}
+      {hud && hud.cameraMode === 'chase' && (
+        <div className="chase-orbit-hint">拖动画面 360° 环绕飞船 · 滚轮缩放</div>
+      )}
+
       {/* 一次性系统提示 */}
       {hud && hud.message && (
         <div className={'cockpit-toast ' + (hud.tone || 'info')}>{hud.message}</div>
@@ -170,8 +293,8 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
       {/* 第一视角下的操作提示 */}
       {hud && hud.cameraMode === 'cockpit' && (
         <div className="cockpit-hint">
-          <span>W/S 油门</span><span>A/D 转向</span><span>方向键 俯仰</span>
-          <span>Q/E 滚转</span><span>V 切换视角</span><span>C 收起控制台</span>
+          <span>摇杆/拖动 转向俯仰</span><span>油门杆 加减速</span><span>W/S 油门</span>
+          <span>V 切换视角</span><span>C 收起控制台</span><span>第三视角：拖动 360° 环绕 · 滚轮缩放</span>
         </div>
       )}
     </div>

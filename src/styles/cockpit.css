@@ -364,6 +364,115 @@
   box-shadow: 0 0 18px rgba(255, 180, 84, 0.35);
 }
 
+/* ---------- 虚拟摇杆（左下） ---------- */
+.virt-stick {
+  position: absolute;
+  left: 22px;
+  bottom: 96px;
+  width: 96px;
+  height: 96px;
+  z-index: 5;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.virt-stick:active { cursor: grabbing; }
+.vs-ring {
+  position: absolute; inset: 0;
+  border: 1px solid var(--fui-cyan-dim);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(8,10,20,0.25) 30%, rgba(8,10,20,0.55) 100%);
+  box-shadow: 0 0 14px rgba(87,230,255,0.18), inset 0 0 14px rgba(87,230,255,0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.vs-cross {
+  position: absolute; inset: 18px;
+  opacity: 0.4;
+}
+.vs-cross::before {
+  content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px;
+  background: var(--fui-cyan-dim);
+}
+.vs-cross::after {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+  background: var(--fui-cyan-dim);
+}
+.vs-knob {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 34px; height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #9fe8ff, #1f7fa8 70%);
+  box-shadow: 0 0 16px rgba(87,230,255,0.55), 0 3px 8px rgba(0,0,0,0.5);
+  transition: transform 0.06s linear;
+}
+.vs-label {
+  position: absolute;
+  bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 0.55rem; letter-spacing: 0.2em;
+  color: var(--fui-cyan-dim);
+  white-space: nowrap;
+}
+
+/* ---------- 虚拟油门杆（右下） ---------- */
+.virt-throttle {
+  position: absolute;
+  right: 22px;
+  bottom: 96px;
+  width: 46px;
+  height: 130px;
+  z-index: 5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.virt-throttle:active { cursor: grabbing; }
+.vt-track {
+  position: absolute; inset: 0 10px;
+  border: 1px solid var(--fui-border);
+  border-radius: 10px;
+  background: rgba(8,10,20,0.55);
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.vt-fill {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(255,180,84,0.75), rgba(255,180,84,0.25));
+  transition: height 0.05s linear;
+}
+.vt-handle {
+  position: absolute; left: 50%;
+  width: 22px; height: 12px;
+  margin-left: -11px; margin-bottom: -6px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffd9a0, #d97a20);
+  box-shadow: 0 0 10px rgba(255,180,84,0.6);
+}
+.vt-label {
+  position: absolute;
+  bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 0.55rem; letter-spacing: 0.1em;
+  color: var(--fui-amber-dim);
+  white-space: nowrap;
+}
+
+/* ---------- 第三视角环绕提示 ---------- */
+.chase-orbit-hint {
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: rgba(242,231,213,0.45);
+  pointer-events: none;
+}
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 768px) {
   .cs-block { min-width: 0; padding: 0.4rem 0.55rem; }
@@ -374,4 +483,7 @@
   .cp-section { padding: 0 0.6rem; }
   .vf-tl, .vf-tr { top: 110px; }
   .vf-bl, .vf-br { bottom: 190px; }
+  .virt-stick { left: 12px; bottom: 120px; width: 84px; height: 84px; }
+  .virt-throttle { right: 12px; bottom: 120px; height: 110px; }
+  .chase-orbit-hint { display: none; }
 }
