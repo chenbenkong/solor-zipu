@@ -1,0 +1,390 @@
+/* ============================================================
+   星隼号 ZF-77 驾驶舱 HUD —— Territory Studio FUI 风格
+   琥珀/青双色全息、多层叠加数据流、可信的未来感
+   ============================================================ */
+
+:root {
+  --fui-amber: #ffb454;
+  --fui-amber-dim: rgba(255, 180, 84, 0.55);
+  --fui-cyan: #57e6ff;
+  --fui-cyan-dim: rgba(87, 230, 255, 0.5);
+  --fui-bg: rgba(8, 10, 20, 0.62);
+  --fui-border: rgba(255, 180, 84, 0.28);
+  --fui-border-cyan: rgba(87, 230, 255, 0.3);
+}
+
+/* ---------- HUD 根容器 ---------- */
+.cockpit-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+.cockpit-hud button { pointer-events: auto; }
+
+/* ---------- 退出按钮 ---------- */
+.cockpit-exit {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fui-amber);
+  background: var(--fui-bg);
+  border: 1px solid var(--fui-border);
+  border-radius: 10px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.cockpit-exit:hover {
+  background: rgba(255, 180, 84, 0.16);
+  box-shadow: 0 0 16px rgba(255, 180, 84, 0.3);
+}
+
+/* ---------- 巨型舷窗相框（第一视角） ---------- */
+.viewport-frame { position: absolute; inset: 0; pointer-events: none; }
+.cockpit-hud[data-cameramode='chase'] .viewport-frame { display: none; }
+
+.vf-corner, .vf-edge { position: absolute; }
+.vf-corner {
+  width: 68px; height: 68px;
+  border-color: var(--fui-amber-dim);
+  border-style: solid;
+  border-width: 0;
+  filter: drop-shadow(0 0 6px rgba(255, 180, 84, 0.35));
+}
+.vf-tl { top: 84px; left: 26px; border-top-width: 2px; border-left-width: 2px; }
+.vf-tr { top: 84px; right: 26px; border-top-width: 2px; border-right-width: 2px; }
+.vf-bl { bottom: 168px; left: 26px; border-bottom-width: 2px; border-left-width: 2px; }
+.vf-br { bottom: 168px; right: 26px; border-bottom-width: 2px; border-right-width: 2px; }
+
+.vf-edge { background: linear-gradient(90deg, transparent, rgba(255,180,84,0.5), transparent); height: 1px; }
+.vf-top { top: 84px; left: 100px; right: 100px; }
+.vf-bottom { bottom: 168px; left: 100px; right: 100px; }
+.vf-left, .vf-right { width: 1px; height: 140px; background: linear-gradient(180deg, transparent, rgba(255,180,84,0.5), transparent); }
+.vf-left { left: 26px; top: 120px; }
+.vf-right { right: 26px; top: 120px; }
+
+.vf-tick {
+  position: absolute;
+  width: 14px; height: 3px;
+  background: var(--fui-cyan-dim);
+  box-shadow: 0 0 6px rgba(87, 230, 255, 0.5);
+}
+.vf-tick-1 { top: 76px; left: 46%; }
+.vf-tick-2 { top: 76px; right: 46%; }
+.vf-tick-3 { bottom: 174px; left: 46%; }
+.vf-tick-4 { bottom: 174px; right: 46%; }
+
+.vf-readout {
+  position: absolute;
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--fui-amber-dim);
+}
+.vf-readout-l { top: 96px; left: 40px; }
+.vf-readout-r { top: 96px; right: 40px; text-align: right; }
+
+/* 瞄准环 */
+.cockpit-reticle {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px; height: 90px;
+  pointer-events: none;
+  opacity: 0.75;
+}
+.reticle-ring {
+  position: absolute; inset: 0;
+  border: 1px solid var(--fui-cyan-dim);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(87, 230, 255, 0.25), inset 0 0 12px rgba(87, 230, 255, 0.12);
+}
+.reticle-dot {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 4px; height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--fui-cyan);
+  box-shadow: 0 0 8px var(--fui-cyan);
+}
+.reticle-ring::before, .reticle-ring::after {
+  content: '';
+  position: absolute;
+  background: var(--fui-cyan-dim);
+}
+.reticle-ring::before { top: 50%; left: -14px; right: -14px; height: 1px; }
+.reticle-ring::after { left: 50%; top: -14px; bottom: -14px; width: 1px; }
+
+/* ---------- 顶部状态条 ---------- */
+.cockpit-statusbar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1px;
+  pointer-events: none;
+}
+.cs-block {
+  display: flex; flex-direction: column; gap: 3px;
+  min-width: 118px;
+  padding: 0.5rem 0.9rem;
+  background: var(--fui-bg);
+  border: 1px solid var(--fui-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.cs-block:first-child { border-radius: 10px 0 0 10px; }
+.cs-block:last-child { border-radius: 0 10px 10px 0; }
+.cs-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  color: var(--fui-amber-dim);
+}
+.cs-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f2e7d5;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.cs-value[data-mode='nav'] { color: var(--fui-amber); text-shadow: 0 0 10px rgba(255,180,84,0.5); }
+.cs-value[data-mode='cruise'] { color: var(--fui-cyan); text-shadow: 0 0 10px rgba(87,230,255,0.45); }
+.cs-value[data-lock='on'] { color: #6ee7a0; text-shadow: 0 0 10px rgba(110,231,160,0.5); }
+
+/* ---------- 底部全息控制台 ---------- */
+.cockpit-console {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cockpit-console.collapsed { transform: translateY(calc(100% - 34px)); }
+
+.console-toggle {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.42rem 1.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--fui-amber);
+  background: var(--fui-bg);
+  border: 1px solid var(--fui-border);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s;
+}
+.console-toggle:hover { background: rgba(255, 180, 84, 0.14); }
+.ct-chevron { font-size: 0.7rem; }
+
+.console-panel {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0.7rem 1rem 0.9rem;
+  background: var(--fui-bg);
+  border: 1px solid var(--fui-border);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+  max-width: calc(100vw - 2rem);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cp-section {
+  display: flex; flex-direction: column; gap: 0.45rem;
+  padding: 0 1.1rem;
+  border-right: 1px solid rgba(255, 180, 84, 0.14);
+}
+.cp-section:last-child { border-right: none; }
+.cp-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.24em;
+  color: var(--fui-amber-dim);
+}
+.cp-buttons { display: flex; gap: 0.4rem; }
+.cp-btn {
+  padding: 0.42rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #f2e7d5;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+.cp-btn:hover {
+  background: rgba(255, 180, 84, 0.14);
+  border-color: rgba(255, 180, 84, 0.5);
+}
+.cp-btn.active {
+  background: rgba(255, 180, 84, 0.22);
+  border-color: var(--fui-amber);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 180, 84, 0.35);
+}
+.cp-cancel {
+  color: #ff9a9a;
+  border-color: rgba(255, 120, 120, 0.4);
+}
+.cp-cancel:hover { background: rgba(255, 90, 90, 0.16); border-color: #ff8080; }
+
+.cp-nav-wrap { position: relative; }
+.cockpit-nav-list {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  min-width: 300px;
+  padding: 0.5rem;
+  background: rgba(8, 10, 20, 0.92);
+  border: 1px solid var(--fui-border);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.cockpit-nav-item {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.76rem;
+  color: #f2e7d5;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cockpit-nav-item:hover { background: rgba(87, 230, 255, 0.12); border-color: rgba(87, 230, 255, 0.45); }
+.cockpit-nav-item.active { background: rgba(255, 180, 84, 0.2); border-color: var(--fui-amber); }
+.cockpit-nav-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--fui-cyan);
+  box-shadow: 0 0 6px var(--fui-cyan);
+}
+
+/* 速度条 */
+.cp-speed { min-width: 150px; }
+.speed-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.speed-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--fui-cyan), var(--fui-amber));
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.5);
+  transition: width 0.25s ease;
+}
+.speed-readout { display: flex; align-items: baseline; gap: 0.3rem; }
+.sr-num {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--fui-amber);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(255, 180, 84, 0.4);
+}
+.sr-unit { font-size: 0.6rem; color: var(--fui-amber-dim); letter-spacing: 0.15em; }
+
+/* ---------- 系统提示 ---------- */
+.cockpit-toast {
+  position: absolute;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1.2rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: #f2e7d5;
+  background: rgba(8, 10, 20, 0.8);
+  border: 1px solid var(--fui-border);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: toastIn 0.35s ease;
+  pointer-events: none;
+}
+.cockpit-toast.ok { border-color: rgba(110, 231, 160, 0.5); color: #b8f5d4; }
+.cockpit-toast.warn { border-color: rgba(255, 120, 120, 0.55); color: #ffc4c4; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ---------- 操作提示 ---------- */
+.cockpit-hint {
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(242, 231, 213, 0.5);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.cockpit-hud[data-cameramode='chase'] .cockpit-hint { display: none; }
+.cockpit-console.collapsed ~ .cockpit-hint { display: none; }
+
+/* ---------- 飞船入口按钮（太阳系模式） ---------- */
+.ship-mode-btn {
+  position: absolute;
+  right: 18px;
+  top: 118px;
+  z-index: 26;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--fui-amber);
+  background: var(--fui-bg);
+  border: 1px solid var(--fui-border);
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.ship-mode-btn:hover {
+  background: rgba(255, 180, 84, 0.16);
+  box-shadow: 0 0 20px rgba(255, 180, 84, 0.35);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .cs-block { min-width: 0; padding: 0.4rem 0.55rem; }
+  .cs-value { font-size: 0.7rem; }
+  .cs-label { font-size: 0.5rem; letter-spacing: 0.12em; }
+  .cockpit-statusbar { width: calc(100vw - 2rem); justify-content: space-between; }
+  .console-panel { gap: 0.5rem; padding: 0.6rem 0.6rem 0.7rem; }
+  .cp-section { padding: 0 0.6rem; }
+  .vf-tl, .vf-tr { top: 110px; }
+  .vf-bl, .vf-br { bottom: 190px; }
+}

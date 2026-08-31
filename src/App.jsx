@@ -8,8 +8,10 @@ import { PlanetLabels } from './components/PlanetLabels';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { BlackHoleOverlay } from './components/BlackHoleOverlay';
+import { CockpitHud } from './components/CockpitHud';
 import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/planetData';
 import './styles/index.css';
+import './styles/cockpit.css';
 
 // 错误边界：捕获子组件渲染期异常，避免整页空白（黑屏）且无提示
 class ErrorBoundary extends Component {
@@ -59,6 +61,8 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [fatalError, setFatalError] = useState(null);
   const [blackHoleMode, setBlackHoleMode] = useState(false);
+  const [shipMode, setShipMode] = useState(false);
+  const [shipHud, setShipHud] = useState(null);
 
   // 全局捕获未被 React 边界兜住的运行时错误，直接显示在页面上
   useEffect(() => {
@@ -137,6 +141,9 @@ export default function App() {
       if (sceneRef.current) {
         const positions = sceneRef.current.getPlanetScreenPositions();
         setPlanetPositions(positions);
+        if (sceneRef.current.isShipModeEnabled && sceneRef.current.isShipModeEnabled()) {
+          setShipHud(sceneRef.current.getShipHud());
+        }
       }
     }, 100);
 
@@ -149,14 +156,21 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  // Esc 退出影院模式
+  // Esc 退出影院模式 / 飞船模式
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.key === 'Escape' && cinemaMode) setCinemaMode(false);
+      if (e.key !== 'Escape') return;
+      if (shipMode) {
+        sceneRef.current?.disableShipMode();
+        setShipMode(false);
+        setShipHud(null);
+      } else if (cinemaMode) {
+        setCinemaMode(false);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [cinemaMode]);
+  }, [cinemaMode, shipMode]);
 
   const handleTogglePause = useCallback(() => {
     setIsPaused(prev => {
@@ -270,6 +284,41 @@ export default function App() {
     }
   }, []);
 
+  /* ================= 星际飞船模式 ================= */
+
+  const handleEnterShipMode = useCallback(() => {
+    if (sceneRef.current?.enableShipMode()) {
+      setShipMode(true);
+      setSelectedCelestial(null);
+    }
+  }, []);
+
+  const handleExitShipMode = useCallback(() => {
+    sceneRef.current?.disableShipMode();
+    setShipMode(false);
+    setShipHud(null);
+  }, []);
+
+  const handleShipModeChange = useCallback((m) => {
+    sceneRef.current?.shipSetMode(m);
+  }, []);
+
+  const handleShipNavSelect = useCallback((name) => {
+    sceneRef.current?.shipNavTo(name);
+  }, []);
+
+  const handleShipCamera = useCallback((m) => {
+    sceneRef.current?.shipSetCamera(m);
+  }, []);
+
+  const handleShipConsole = useCallback(() => {
+    sceneRef.current?.shipToggleConsole();
+  }, []);
+
+  const handleShipCancelNav = useCallback(() => {
+    sceneRef.current?.shipCancelNav();
+  }, []);
+
   // 进入黑洞体验：挂起太阳系渲染（省 GPU），卸载时恢复
   const handleEnterBlackHole = useCallback(() => {
     setBlackHoleMode(true);
@@ -298,6 +347,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (shipMode) return; // 飞船模式下由飞船系统接管键盘
       if (event.code === 'Space') {
         event.preventDefault();
         handleTogglePause();
@@ -314,7 +364,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTogglePause, handleSpeedChange, timeSpeed]);
+  }, [handleTogglePause, handleSpeedChange, timeSpeed, shipMode]);
 
   return (
     <ErrorBoundary>
@@ -337,7 +387,7 @@ export default function App() {
           <Header zoomLevel={globalScale} speedLevel={timeSpeed} isPaused={isPaused} />
           <StatusDisplay zoomLevel={globalScale} speedLevel={timeSpeed} />
           <PlanetLabels positions={planetPositions} />
-          <NavigationPanel onSelect={(name) => sceneRef.current?.focusByName(name)} />
+          <NavigationPanel onSelect={(name) => (shipMode ? sceneRef.current?.shipNavTo(name) : sceneRef.current?.focusByName(name))} />
           <PlanetInfo
             celestial={selectedCelestial}
             onClose={handleCloseInfo}
@@ -376,6 +426,27 @@ export default function App() {
       >
         {cinemaMode ? '✕' : '◎'}
       </button>
+
+      {/* 星际飞船模式入口（飞船模式内隐藏） */}
+      {!shipMode && !cinemaMode && (
+        <button className="ship-mode-btn" onClick={handleEnterShipMode} title="登上星隼号 ZF-77">
+          🚀 登上飞船
+        </button>
+      )}
+
+      {/* 飞船驾驶舱 HUD */}
+      {shipMode && shipHud && (
+        <CockpitHud
+          hud={shipHud}
+          planets={["太阳","水星","金星","地球","火星","木星","土星","天王星","海王星","冥王星","月球","谷神星","灶神星","智神星","婚神星"]}
+          onModeChange={handleShipModeChange}
+          onNavSelect={handleShipNavSelect}
+          onToggleCamera={handleShipCamera}
+          onToggleConsole={handleShipConsole}
+          onCancelNav={handleShipCancelNav}
+          onExit={handleExitShipMode}
+        />
+      )}
 
       {blackHoleMode && <BlackHoleOverlay onExit={handleExitBlackHole} />}
       </div>

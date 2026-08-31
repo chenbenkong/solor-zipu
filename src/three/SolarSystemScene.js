@@ -6,6 +6,7 @@ import { createStarfield } from './utils/createStarfield.js';
 import { createComposer } from './postprocessing/createComposer.js';
 import { createAsteroidBelt, createKuiperBelt } from './objects/createAsteroidBelt.js';
 import { createAsteroidTextures } from './objects/asteroidTextures.js';
+import { ShipSystem } from './ship/ShipSystem.js';
 
 export class SolarSystemScene {
   constructor(container) {
@@ -59,6 +60,8 @@ export class SolarSystemScene {
     this.loadingManager = null;
     this.onLoaded = null;
     this.suspended = false;
+    this.shipSystem = null;
+    this.clock = new THREE.Clock();
   }
 
   init() {
@@ -142,6 +145,13 @@ export class SolarSystemScene {
 
     // 知名小行星：谷神星、灶神星、智神星、婚神星
     this.namedAsteroids = this.createNamedAsteroids();
+
+    // 星际飞船系统（由 UI 启用进入飞船模式，不启用时零开销）
+    this.shipSystem = new ShipSystem(
+      this.scene, this.camera, this.renderer,
+      this.solarSystem, this.planetMeshes, this.sun,
+      { namedAsteroids: this.namedAsteroids }
+    );
     
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -403,6 +413,7 @@ export class SolarSystemScene {
     // 黑洞体验期间挂起太阳系渲染，让出全部 GPU
     if (this.suspended) return;
 
+    const delta = Math.min(this.clock.getDelta(), 0.05);
     const time = Date.now() * 0.001;
     
     if (!this.isPaused) {
@@ -422,7 +433,10 @@ export class SolarSystemScene {
       });
     }
     
-    if (this.currentTargetPlanet) {
+    if (this.shipSystem && this.shipSystem.enabled) {
+      // 飞船模式：飞船系统接管相机与输入
+      this.shipSystem.update(delta, this.timeSpeed, this.isPaused);
+    } else if (this.currentTargetPlanet) {
       this.updateCameraTracking();
     } else {
       this.controls.update();
@@ -943,7 +957,74 @@ export class SolarSystemScene {
     return asteroids;
   }
 
+  /* ================= 星际飞船模式接口 ================= */
+
+  enableShipMode() {
+    if (!this.shipSystem) return false;
+    if (this.shipSystem.enabled) return true;
+    // 记录接管前的相机状态，退出时完整恢复
+    this._preShipCam = {
+      pos: this.camera.position.clone(),
+      quat: this.camera.quaternion.clone(),
+      target: this.controls.target.clone()
+    };
+    this.controls.enabled = false;
+    this.currentTargetPlanet = null;
+    this.shipSystem.enable(new THREE.Vector3(0, 140, 980));
+    this.shipSystem.attachInput();
+    return true;
+  }
+
+  disableShipMode() {
+    if (!this.shipSystem || !this.shipSystem.enabled) return;
+    this.shipSystem.detachInput();
+    this.shipSystem.disable();
+    this.controls.enabled = true;
+    if (this._preShipCam) {
+      this.camera.position.copy(this._preShipCam.pos);
+      this.camera.quaternion.copy(this._preShipCam.quat);
+      this.controls.target.copy(this._preShipCam.target);
+      this.controls.update();
+      this._preShipCam = null;
+    }
+  }
+
+  isShipModeEnabled() {
+    return !!(this.shipSystem && this.shipSystem.enabled);
+  }
+
+  getShipHud() {
+    return this.shipSystem ? this.shipSystem.getHudState() : null;
+  }
+
+  shipNavTo(name) {
+    if (this.shipSystem && this.shipSystem.enabled) {
+      return this.shipSystem.setNavTargetByName(name);
+    }
+    return false;
+  }
+
+  shipCancelNav() {
+    if (this.shipSystem) this.shipSystem.cancelNav();
+  }
+
+  shipSetMode(m) {
+    if (this.shipSystem) this.shipSystem.setFlightMode(m);
+  }
+
+  shipSetCamera(m) {
+    if (this.shipSystem) this.shipSystem.setCameraMode(m);
+  }
+
+  shipToggleConsole() {
+    if (this.shipSystem) this.shipSystem.toggleConsole();
+  }
+
   dispose() {
+    if (this.shipSystem) {
+      this.shipSystem.dispose();
+      this.shipSystem = null;
+    }
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
