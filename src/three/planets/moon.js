@@ -30,7 +30,7 @@ export function createMoon(planetRadius, manager, config = {}) {
   const moonRadius = planetRadius * radiusRatio;
   const orbitDistance = planetRadius * distanceRatio;
 
-  const moonGeometry = new THREE.SphereGeometry(moonRadius, 64, 32);
+  const moonGeometry = new THREE.SphereGeometry(moonRadius, 96, 64);
 
   // Determine texture source: procedural or file-based
   const texGenerator = MOON_TEXTURE_GENERATORS[name];
