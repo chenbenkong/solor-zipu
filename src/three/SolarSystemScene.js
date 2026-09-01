@@ -223,11 +223,12 @@ export class SolarSystemScene {
     this.sunLight = new THREE.PointLight(0xfff2e0, 3.0, 0, 0);
     this.sunLight.position.set(0, 0, 0);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 4096;
-    this.sunLight.shadow.mapSize.height = 4096;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
     this.sunLight.shadow.camera.near = 1;
-    this.sunLight.shadow.camera.far = 15000;
-    this.sunLight.shadow.bias = -0.0001;
+    this.sunLight.shadow.camera.far = 6500;
+    this.sunLight.shadow.bias = -0.0003;
+    this.sunLight.shadow.normalBias = 1.5;
     this.scene.add(this.sunLight);
 
     // 补光，勾出球体体积感

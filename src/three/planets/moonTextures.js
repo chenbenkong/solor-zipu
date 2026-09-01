@@ -167,9 +167,9 @@ export function generateIoTexture(size = 1024) {
     const n1 = warpedFbm(u * 5.5, v * 5.5, 5, rnd, 1.5);
     const n2 = warpedFbm(u * 10 + 5, v * 10 + 5, 4, rnd, 1.1);
 
-    let r = 218 + n1 * 30;
-    let g = 178 + n1 * 26 - n2 * 16;
-    let b = 60 + n2 * 18;
+    let r = 206 + n1 * 26;
+    let g = 168 + n1 * 22 - n2 * 14;
+    let b = 56 + n2 * 16;
 
     // 大块火山平原（暗色区域，如 Loki 熔湖）
     const volcanic = smoothstep(-0.08, 0.18, n2);
@@ -185,9 +185,9 @@ export function generateIoTexture(size = 1024) {
   spherePoints(15, size, randF).forEach(pt => {
     const r0 = size * (0.03 + randF() * 0.055);
     const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r0);
-    g.addColorStop(0, 'rgba(248,246,235,0.5)');
-    g.addColorStop(0.6, 'rgba(244,238,220,0.28)');
-    g.addColorStop(1, 'rgba(244,238,220,0)');
+    g.addColorStop(0, 'rgba(252,250,242,0.72)');
+    g.addColorStop(0.55, 'rgba(250,244,228,0.45)');
+    g.addColorStop(1, 'rgba(250,244,228,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, r0, 0, Math.PI * 2);
