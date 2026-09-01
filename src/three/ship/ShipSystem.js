@@ -636,27 +636,20 @@ export class ShipSystem {
       if (this.navLock && this.navTarget) {
         const t2 = this.navTarget;
         const wp2 = t2.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
-        // 构图：相机在「卫星-飞船」连线的侧向 3/4 机位——飞船剪影与星球同框，
-        // 略偏太阳侧让星球呈高相位受光（坑纹立体感最佳），避免逆光暗面
-        const sunPos = this.sun ? this.sun.getWorldPosition(new THREE.Vector3()) : null;
+        // 构图（潜入模式）：相机锚定「飞船→卫星」方向侧后方 3/4 机位。
+        // 注意不能用卫星背阳方向定位（会随公转整体旋转导致相机绕圈漂移），
+        // 改用飞船与卫星的相对几何——飞船锁定时几乎与卫星同轨道静止，构图天然稳定。
         const anchor = this._computeViewPosition(wp2, t2, tmpV2).clone();
         const distA = anchor.distanceTo(wp2);
-        const axis = anchor.clone().sub(wp2).normalize();
-        const sideDir = new THREE.Vector3().crossVectors(axis, AIM_UP);
+        const shipDir = tmpV2.subVectors(pos, wp2).normalize(); // 卫星→飞船
+        const sideDir = new THREE.Vector3().crossVectors(shipDir, AIM_UP);
         if (sideDir.lengthSq() < 1e-6) sideDir.set(0, 0, 1);
         sideDir.normalize();
-        // 潜入式观赏（太阳隐藏）时不做太阳侧偏移，避免相机被甩到日面边缘
-        const sunHidden = this._shipInsideSun || this._targetInsideSun;
-        tmpV1.copy(anchor)
-          .addScaledVector(sideDir, distA * 1.15);
-        if (sunPos && !sunHidden) {
-          // 常规模式：略偏太阳侧让星球呈高相位受光
-          tmpV1.addScaledVector(sunPos.clone().sub(wp2).normalize(), distA * 0.3);
-        } else {
-          // 潜入模式：靠飞船锚点一侧，保证顺光与同框
-          tmpV1.addScaledVector(axis.clone().negate(), distA * 0.25);
-        }
-        tmpV1.y += distA * 0.34;
+        // 相机 = 卫星 + shipDir*dist*0.72 + 侧向*dist*0.85 + 抬高：3/4 顺光机位
+        tmpV1.copy(wp2)
+          .addScaledVector(shipDir, distA * 0.72)
+          .addScaledVector(sideDir, distA * 0.85);
+        tmpV1.y += distA * 0.4;
         if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
         const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
         this._chasePrevAnchor.copy(tmpV1);
