@@ -162,58 +162,73 @@ function baseTexture(size, rand, colorFn) {
  */
 export function generateIoTexture(size = 1024) {
   const rand = mulberry32(42);
+  // 底色：低频域扭曲，去掉高频噪点（上一版颗粒感来源）
   const cvs = baseTexture(size, rand, (u, v, rnd) => {
-    const n1 = warpedFbm(u * 7, v * 7, 6, rnd, 1.6);
-    const n2 = warpedFbm(u * 13 + 5, v * 13 + 5, 5, rnd, 1.2);
-    const n3 = fbm(u * 28 + 20, v * 28 + 20, 3, rnd);
+    const n1 = warpedFbm(u * 5.5, v * 5.5, 5, rnd, 1.5);
+    const n2 = warpedFbm(u * 10 + 5, v * 10 + 5, 4, rnd, 1.1);
 
-    let r = 215 + n1 * 35;
-    let g = 175 + n1 * 30 - n2 * 20;
-    let b = 55 + n3 * 25;
+    let r = 218 + n1 * 30;
+    let g = 178 + n1 * 26 - n2 * 16;
+    let b = 60 + n2 * 18;
 
     // 大块火山平原（暗色区域，如 Loki 熔湖）
-    const volcanic = smoothstep(-0.05, 0.15, n2);
-    r = lerp(70, r, volcanic);
-    g = lerp(45, g, volcanic);
-    b = lerp(28, b, volcanic);
-
-    // 白霜高地
-    const frost = smoothstep(0.32, 0.55, n3);
-    r = lerp(r, 245, frost * 0.65);
-    g = lerp(g, 240, frost * 0.6);
-    b = lerp(b, 225, frost * 0.55);
+    const volcanic = smoothstep(-0.08, 0.18, n2);
+    r = lerp(84, r, volcanic);
+    g = lerp(52, g, volcanic);
+    b = lerp(30, b, volcanic);
     return [r, g, b];
   });
   const ctx = cvs.getContext('2d');
 
-  // 火山口：红环 + 熔流
+  // 白霜高地：柔和乳白斑块（二氧化硫霜），先画霜再画火山（火山压在霜上）
+  const randF = mulberry32(424);
+  spherePoints(15, size, randF).forEach(pt => {
+    const r0 = size * (0.03 + randF() * 0.055);
+    const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r0);
+    g.addColorStop(0, 'rgba(248,246,235,0.5)');
+    g.addColorStop(0.6, 'rgba(244,238,220,0.28)');
+    g.addColorStop(1, 'rgba(244,238,220,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 火山口：黑心 + 红热环 + 橙溅射；带 1-2 条锥形熔流（沿曲线、宽度渐减）
   const rand2 = mulberry32(4242);
-  const spots = spherePoints(26, size, rand2);
+  const spots = spherePoints(24, size, rand2);
   spots.forEach(pt => {
-    const r = 6 + rand2() * 16;
-    const g = ctx.createRadialGradient(pt.x, pt.y * (0.3 + 0.7 * Math.sin(pt.r * Math.PI)) + size * 0.35, 0, pt.x, pt.y, r);
-    g.addColorStop(0, 'rgba(40,10,5,0.95)');           // 黑火山口
-    g.addColorStop(0.35, 'rgba(150,45,15,0.75)');      // 红热环
-    g.addColorStop(0.7, 'rgba(220,120,40,0.35)');      // 橙色溅射
+    const r = 5 + rand2() * 12;
+    const g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
+    g.addColorStop(0, 'rgba(35,10,6,0.95)');
+    g.addColorStop(0.4, 'rgba(145,48,16,0.7)');
+    g.addColorStop(0.75, 'rgba(210,115,42,0.3)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
     ctx.fill();
-    // 部分火山有长熔流
-    if (rand2() > 0.55) {
-      const ang = rand2() * Math.PI * 2;
-      const len = r * (2 + rand2() * 4);
-      const lg = ctx.createLinearGradient(pt.x, pt.y, pt.x + Math.cos(ang) * len, pt.y + Math.sin(ang) * len);
-      lg.addColorStop(0, 'rgba(160,50,20,0.6)');
-      lg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.strokeStyle = lg;
-      ctx.lineWidth = r * 0.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(pt.x, pt.y);
-      ctx.lineTo(pt.x + Math.cos(ang) * len, pt.y + Math.sin(ang) * len);
-      ctx.stroke();
+
+    // 熔流：沿随机游走路径画渐细的圆珠链（比直线 stroke 更像熔岩扇）
+    if (rand2() > 0.45) {
+      const flows = 1 + (rand2() > 0.7 ? 1 : 0);
+      for (let f = 0; f < flows; f++) {
+        let fx = pt.x, fy = pt.y;
+        let ang = rand2() * Math.PI * 2;
+        const steps = 10 + Math.floor(rand2() * 12);
+        let rad = r * 0.42;
+        for (let sIdx = 0; sIdx < steps; sIdx++) {
+          ang += (rand2() - 0.5) * 0.5;
+          fx += Math.cos(ang) * (r * 0.28);
+          fy += Math.sin(ang) * (r * 0.28);
+          rad *= 0.93;
+          const heat = sIdx / steps;
+          ctx.fillStyle = `rgba(${Math.round(200 - heat * 120)},${Math.round(90 - heat * 55)},${Math.round(30 - heat * 18)},${0.55 - heat * 0.35})`;
+          ctx.beginPath();
+          ctx.arc(fx, fy, Math.max(0.8, rad), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
   });
   return new THREE.CanvasTexture(cvs);
@@ -335,15 +350,28 @@ export function generateCallistoTexture(size = 1024) {
   });
   const ctx = cvs.getContext('2d');
   const rand2 = mulberry32(256256);
-  // 密集陨石坑（三层：大、中、小）
-  spherePoints(24, size, rand2).forEach(pt => {
-    drawCrater(ctx, size, pt.x, pt.y, 16 + rand2() * 26, rand2, { rays: 12, rayColor: 'rgba(235,230,220,0.55)' });
+  // 密集陨石坑（四层：巨坑带长溅射纹、中坑、小坑、微亮坑点）
+  spherePoints(26, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 16 + rand2() * 26, rand2, {
+      rays: 14, rayColor: 'rgba(245,240,228,0.65)',
+      floor: 'rgba(0,0,0,0.4)', rimLight: 'rgba(255,252,244,0.5)'
+    });
   });
-  spherePoints(90, size, rand2).forEach(pt => {
-    drawCrater(ctx, size, pt.x, pt.y, 5 + rand2() * 12, rand2, { rays: rand2() > 0.7 ? 6 : 0 });
+  spherePoints(95, size, rand2).forEach(pt => {
+    drawCrater(ctx, size, pt.x, pt.y, 5 + rand2() * 12, rand2, {
+      rays: rand2() > 0.45 ? 8 : 0, rayColor: 'rgba(240,234,220,0.5)',
+      floor: 'rgba(0,0,0,0.34)', rimLight: 'rgba(255,250,240,0.42)'
+    });
   });
-  spherePoints(340, size, rand2).forEach(pt => {
+  spherePoints(330, size, rand2).forEach(pt => {
     drawCrater(ctx, size, pt.x, pt.y, 1.5 + rand2() * 4.5, rand2);
+  });
+  // 新鲜亮坑微点（卡里斯托标志性的密集白点）
+  spherePoints(220, size, rand2).forEach(pt => {
+    ctx.fillStyle = 'rgba(235,230,218,' + (0.25 + rand2() * 0.3).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 0.7 + rand2() * 1.4, 0, Math.PI * 2);
+    ctx.fill();
   });
   return new THREE.CanvasTexture(cvs);
 }

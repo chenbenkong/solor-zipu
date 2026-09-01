@@ -21,15 +21,15 @@ export function createPlanets(solarSystem, manager) {
     } else if (planet.name === '火星') {
       material = createSimplePlanetMaterial(manager, 'textures/mars.jpg', 0x301005, 0.05, true);
     } else if (planet.name === '金星') {
-      material = createSimplePlanetMaterial(manager, 'textures/venus_atmosphere.jpg', 0x2a1a08, 0.12, false);
+      material = createSimplePlanetMaterial(manager, 'textures/venus_atmosphere.jpg', 0x2a1a08, 0.12, true);
     } else if (planet.name === '水星') {
       material = createSimplePlanetMaterial(manager, 'textures/mercury.jpg', 0x222018, 0.06, true);
     } else if (planet.name === '天王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/uranus.jpg', 0x0a2a3a, 0.08, false);
+      material = createSimplePlanetMaterial(manager, 'textures/uranus.jpg', 0x0a2a3a, 0.08, true);
     } else if (planet.name === '海王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/neptune.jpg', 0x081830, 0.08, false);
+      material = createSimplePlanetMaterial(manager, 'textures/neptune.jpg', 0x081830, 0.08, true);
     } else if (planet.name === '冥王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/pluto.jpg', 0x1a120a, 0.06, false);
+      material = createSimplePlanetMaterial(manager, 'textures/pluto.jpg', 0x1a120a, 0.06, true);
     } else {
       material = new THREE.MeshPhongMaterial({
         color: planet.color,
@@ -113,7 +113,7 @@ export function createPlanets(solarSystem, manager) {
 function loadTex(manager, path) {
   const t = new THREE.TextureLoader(manager).load(BASE + path);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  t.anisotropy = 16;
   return t;
 }
 
@@ -153,7 +153,7 @@ function makeNormalFromImage(image, size) {
   octx.putImageData(odata, 0, 0);
   const tex = new THREE.CanvasTexture(out);
   tex.colorSpace = THREE.NoColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 16;
   return tex;
 }
 
@@ -302,10 +302,10 @@ function createEarthMaterial(manager) {
   const nightMap = loadTex(manager, 'textures/earth_night.jpg');
   const specMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_specular.jpg');
   specMap.colorSpace = THREE.NoColorSpace;
-  specMap.anisotropy = 8;
+  specMap.anisotropy = 16;
   const normalMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_normal.jpg');
   normalMap.colorSpace = THREE.NoColorSpace;
-  normalMap.anisotropy = 8;
+  normalMap.anisotropy = 16;
 
   return new THREE.ShaderMaterial({
     extensions: { derivatives: true },
@@ -399,14 +399,26 @@ function createClouds(radius, manager) {
 }
 
 function createGasGiantMaterial(manager, path, emissive, intensity) {
-  const tex = loadTex(manager, path);
-  return new THREE.MeshStandardMaterial({
-    map: tex,
-    roughness: 1.0,
+  const mat = new THREE.MeshStandardMaterial({
+    roughness: 0.9,
     metalness: 0.0,
     emissive: new THREE.Color(emissive),
     emissiveIntensity: intensity
   });
+  const loader = new THREE.TextureLoader(manager);
+  loader.load(BASE + path, (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 16;
+    mat.map = tex;
+    // 云带法线：从亮度图生成，条带起伏立体
+    if (tex.image) {
+      const n = makeNormalFromImage(tex.image, 1024);
+      mat.normalMap = n;
+      mat.normalScale = new THREE.Vector2(0.55, 0.55);
+    }
+    mat.needsUpdate = true;
+  });
+  return mat;
 }
 
 function createSimplePlanetMaterial(manager, path, emissive, intensity, withNormal) {
@@ -419,12 +431,12 @@ function createSimplePlanetMaterial(manager, path, emissive, intensity, withNorm
   const loader = new THREE.TextureLoader(manager);
   loader.load(BASE + path, (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.anisotropy = 16;
     mat.map = tex;
     if (withNormal && tex.image) {
-      const n = makeNormalFromImage(tex.image, 512);
+      const n = makeNormalFromImage(tex.image, 1024);
       mat.normalMap = n;
-      mat.normalScale = new THREE.Vector2(0.8, 0.8);
+      mat.normalScale = new THREE.Vector2(1.1, 1.1);
     }
     mat.needsUpdate = true;
   });
@@ -578,7 +590,7 @@ function createRingColorTexture() {
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(cvs);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 16;
   return tex;
 }
 

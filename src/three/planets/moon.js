@@ -40,7 +40,7 @@ export function createMoon(planetRadius, manager, config = {}) {
     // Procedural texture: generate synchronously on canvas
     const proceduralTex = texGenerator(1024);
     proceduralTex.colorSpace = THREE.SRGBColorSpace;
-    proceduralTex.anisotropy = 8;
+    proceduralTex.anisotropy = 16;
 
     moonMaterial = new THREE.MeshPhongMaterial({
       map: proceduralTex,
@@ -61,7 +61,7 @@ export function createMoon(planetRadius, manager, config = {}) {
     const textureLoader = new THREE.TextureLoader(manager);
     const moonTexture = textureLoader.load(BASE + 'textures/moon_hd.jpg');
     moonTexture.colorSpace = THREE.SRGBColorSpace;
-    moonTexture.anisotropy = 8;
+    moonTexture.anisotropy = 16;
 
     moonMaterial = new THREE.MeshPhongMaterial({
       map: moonTexture,
@@ -76,7 +76,7 @@ export function createMoon(planetRadius, manager, config = {}) {
     img.onload = () => {
       const normalTex = buildNormalMap(img, 1024);
       normalTex.colorSpace = THREE.NoColorSpace;
-      normalTex.anisotropy = 8;
+      normalTex.anisotropy = 16;
       moonMaterial.normalMap = normalTex;
       moonMaterial.normalScale = new THREE.Vector2(1.4, 1.4);
       moonMaterial.needsUpdate = true;
@@ -162,6 +162,6 @@ function buildNormalMap(img, size) {
   octx.putImageData(odata, 0, 0);
   const tex = new THREE.CanvasTexture(out);
   tex.colorSpace = THREE.NoColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 16;
   return tex;
 }

@@ -479,6 +479,7 @@ export class ShipSystem {
     this._navPrevWp = null;
     this._navPrevDesired = null;
     this._lockPrevAnchor = null;
+    this._chasePrevAnchor = null;
     // 保存该目标的最佳观赏参数（下次导航同一目标直接复用）
     if (!this.savedView || this.savedView.target !== t.name) {
       // 小卫星近观：按绝对距离拉近，贴图细节才能占满画面
@@ -604,23 +605,27 @@ export class ShipSystem {
       if (this.navLock && this.navTarget) {
         const t2 = this.navTarget;
         const wp2 = t2.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
-        // 相机放在卫星向阳侧：位于飞船锚点（向阳面）再往外、抬高一点，看向卫星亮面
+        // 构图：相机在「卫星-飞船」连线的侧向 3/4 机位——飞船剪影与星球同框，
+        // 略偏太阳侧让星球呈高相位受光（坑纹立体感最佳），避免逆光暗面
         const sunPos = this.sun ? this.sun.getWorldPosition(new THREE.Vector3()) : null;
-        const outDir = sunPos
-          ? wp2.clone().sub(sunPos).normalize() // 卫星背阳方向（= 相机应在的一侧的反向）
-          : pos.clone().sub(wp2).normalize();
-        // 相机 = 卫星向阳面锚点再往外推一点（更靠近太阳一侧），保证顺光
-        const anchorToSun = this._computeViewPosition(wp2, t2, tmpV2).clone();
-        const toSunSide = sunPos ? sunPos.clone().sub(anchorToSun).normalize() : toShipFallback();
-        function toShipFallback() { return pos.clone().sub(wp2).normalize(); }
-        tmpV1.copy(anchorToSun).addScaledVector(toSunSide, Math.max(t2.radius * 1.6, 4));
-        tmpV1.y += t2.radius * 1.2;
+        const anchor = this._computeViewPosition(wp2, t2, tmpV2).clone();
+        const distA = anchor.distanceTo(wp2);
+        const axis = anchor.clone().sub(wp2).normalize();
+        const sideDir = new THREE.Vector3().crossVectors(axis, AIM_UP);
+        if (sideDir.lengthSq() < 1e-6) sideDir.set(0, 0, 1);
+        sideDir.normalize();
+        tmpV1.copy(anchor)
+          .addScaledVector(sideDir, distA * 1.15)
+          .addScaledVector(sunPos ? sunPos.clone().sub(wp2).normalize() : axis.clone().negate(), distA * 0.3);
+        tmpV1.y += distA * 0.34;
         if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
         const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
         this._chasePrevAnchor.copy(tmpV1);
-        cam.position.copy(tmpV1).add(chaseDelta);
-        // 相机看向卫星本体（顺光亮面），飞船自然入画
-        tmpM1.lookAt(cam.position, wp2, AIM_UP);
+        // 锁定时相机与锚点刚性同步，构图稳定不漂移
+        cam.position.copy(tmpV1);
+        // 看向卫星与飞船之间（偏卫星 0.6）：星球为主角、飞船剪影入画
+        const lookTarget = wp2.clone().multiplyScalar(0.6).addScaledVector(anchor, 0.4);
+        tmpM1.lookAt(cam.position, lookTarget, AIM_UP);
         tmpQ1.setFromRotationMatrix(tmpM1);
         cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-10 * dt));
         this._cameraInsideGuard();
