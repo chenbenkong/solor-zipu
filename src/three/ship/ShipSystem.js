@@ -24,6 +24,7 @@ const VIEW_LOCK_KEY = 'starship-viewlock-v2';
 const AIM_UP = new THREE.Vector3();
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
 const SUN_TMP = new THREE.Vector3();
+const INSIDE_TMP = new THREE.Vector3();
 export class ShipSystem {
   constructor(scene, camera, renderer, solarSystemGroup, planetMeshes, sun, opts = {}) {
     this.scene = scene;
@@ -76,6 +77,8 @@ export class ShipSystem {
     this._stickY = 0;            // 摇杆纵向 -1~1：俯仰
     this._stickRoll = 0;         // 摇杆侧向滚转（左右平移键）
     this._stickThrottle = 0;     // 虚拟油门 0~1
+    this._shipInsideSun = false;
+    this._targetInsideSun = false;
     this._chaseOrbit = 0;        // 第三视角环绕角（弧度，可 360° 旋转）
     this._chaseElev = 0.24;      // 第三视角仰角系数
     this._chaseDist = 26;        // 第三视角距离（拉近感调校）
@@ -126,7 +129,7 @@ export class ShipSystem {
   disable() {
     this.enabled = false;
     this.ship.visible = false;
-    this.navLock = false;
+    if (this.sun) this.sun.visible = true;    this.navLock = false;
     this.navPhase = 'idle';
     this.throttle = 0;
     this.shipParts.setThrottle(0);
@@ -251,6 +254,14 @@ export class ShipSystem {
   update(dt, timeSpeed, isPaused) {
     if (!this.enabled) return;
     this._time += dt;
+
+    // 内行星潜入式观赏：水星轨道(230)在太阳可视半径(300)内。
+    // 太阳网格为 FrontSide 材质，从内部看因背面剔除自动隐形 —— 潜入后太阳消失、水星可见。
+    // 船在日面内 或 正在导航日面内的目标时，隐藏太阳网格（否则日面挡住目标）。
+    this._shipInsideSun = this.shipState.position.length() < 300;
+    this._targetInsideSun = !!(this.navTarget && this.navTarget.kind !== 'star' &&
+      this.navTarget.mesh.getWorldPosition(INSIDE_TMP).length() < 300);
+    if (this.sun) this.sun.visible = !(this._shipInsideSun || (this.mode === 'nav' && this._targetInsideSun));
 
     if (this.navLock && this.navPhase === 'locked' && this.navTarget) {
       this._updateViewLock(dt);
@@ -477,8 +488,8 @@ export class ShipSystem {
         break;
       }
     }
-    // 太阳守卫圈钳制：观赏点不得落在太阳碰撞守卫圈内（水星轨道在守卫圈内的兜底）
-    if (this.sun && t.kind !== 'star') {
+    // 太阳守卫圈钳制：观赏点不得落在太阳碰撞守卫圈内（内行星潜入式观赏时跳过）
+    if (this.sun && t.kind !== 'star' && !this._targetInsideSun) {
       const sunGuard = 327;
       const dSun = out.distanceTo(SUN_TMP);
       if (dSun < sunGuard) {
@@ -561,8 +572,8 @@ export class ShipSystem {
   }
 
   _collisionGuard() {
-    // 太阳
-    if (this.sun) {
+    // 太阳（潜入式观赏时放行：目标在日面内或船已在日面内）
+    if (this.sun && !(this._targetInsideSun || this._shipInsideSun)) {
       const sp = this.sun.getWorldPosition(tmpV1.set(0, 0, 0));
       const minD = 315;
       const d = this.shipState.position.distanceTo(sp);
@@ -695,7 +706,7 @@ export class ShipSystem {
         this.camera.position.copy(wp).addScaledVector(dir, minD);
       }
     };
-    if (this.sun) check(this.sun.getWorldPosition(tmpV1), 310);
+    if (this.sun && !(this._targetInsideSun || this._shipInsideSun)) check(this.sun.getWorldPosition(tmpV1), 310);
     for (const p of this.planetMeshes) {
       check(p.mesh.getWorldPosition(tmpV1), p.radius);
     }
