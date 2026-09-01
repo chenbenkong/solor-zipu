@@ -440,6 +440,22 @@ export class ShipSystem {
     }
     out.copy(wp).addScaledVector(dir, dist).addScaledVector(side, lateral);
     out.y += yOff;
+    // 内行星遮挡规避：水星/金星轨道在太阳巨脸背景前，锚点改到「行星-太阳连线侧向」
+    // 并保证相机-行星视线与太阳视线的夹角大于太阳角半径，避免画面被太阳占据
+    if (t.kind === 'planet' && !this.savedView && this.sun && t.radius < 12) {
+      const toSun = SUN_TMP.clone().sub(wp).normalize();
+      // 锚点方向若与太阳方向夹角小于 60°（背景会有太阳巨脸），旋转到切向
+      const anchorDir = out.clone().sub(wp).normalize();
+      if (anchorDir.dot(toSun) > 0.5) {
+        const tangent = new THREE.Vector3().crossVectors(toSun, UP_AXIS);
+        if (tangent.lengthSq() < 1e-6) tangent.set(0, 0, 1);
+        tangent.normalize();
+        out.copy(wp).addScaledVector(tangent, dist).addScaledVector(side, lateral * 0.5);
+        out.y += yOff;
+      }
+      // 内行星观赏距离用绝对值：小半径行星拉近到 8~14 单位，特写效果
+      if (dist > 20) dist = Math.max(t.radius * 4.5, 8);
+    }
     // 母行星遮挡规避：观赏小卫星时，若卫星背阳锚点正对母行星巨脸，绕到侧面锚点
     if (t.kind === 'moon' && !this.savedView) {
       for (const pl of this.planetMeshes) {
