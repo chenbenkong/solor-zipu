@@ -599,8 +599,6 @@ export class ShipSystem {
     }
   }
 
-  /* ---------- 相机（调试计数） ---------- */
-  _camDbg = { lockFrames: 0, lastPos: null, guardPushes: 0 };
 
   /* ---------- 相机 ---------- */
   _updateCamera(dt) {
@@ -654,9 +652,6 @@ export class ShipSystem {
         const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
         this._chasePrevAnchor.copy(tmpV1);
         // 锁定时相机与锚点刚性同步，构图稳定不漂移
-        this._camDbg.lastLockPos = tmpV1.toArray().map(v => Math.round(v));
-        this._camDbg.lastAnchor = anchor.toArray().map(v => Math.round(v));
-        this._camDbg.lastDistA = Math.round(distA);
         cam.position.copy(tmpV1);
         // 看向卫星与飞船之间（偏卫星 0.6）：星球为主角、飞船剪影入画
         const lookTarget = wp2.clone().multiplyScalar(0.6).addScaledVector(anchor, 0.4);
