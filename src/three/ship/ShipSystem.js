@@ -599,6 +599,9 @@ export class ShipSystem {
     }
   }
 
+  /* ---------- 相机（调试计数） ---------- */
+  _camDbg = { lockFrames: 0, lastPos: null, guardPushes: 0 };
+
   /* ---------- 相机 ---------- */
   _updateCamera(dt) {
     this._camBlend = Math.min(1, this._camBlend + dt * 3);
