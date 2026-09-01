@@ -641,9 +641,17 @@ export class ShipSystem {
         const sideDir = new THREE.Vector3().crossVectors(axis, AIM_UP);
         if (sideDir.lengthSq() < 1e-6) sideDir.set(0, 0, 1);
         sideDir.normalize();
+        // 潜入式观赏（太阳隐藏）时不做太阳侧偏移，避免相机被甩到日面边缘
+        const sunHidden = this._shipInsideSun || this._targetInsideSun;
         tmpV1.copy(anchor)
-          .addScaledVector(sideDir, distA * 1.15)
-          .addScaledVector(sunPos ? sunPos.clone().sub(wp2).normalize() : axis.clone().negate(), distA * 0.3);
+          .addScaledVector(sideDir, distA * 1.15);
+        if (sunPos && !sunHidden) {
+          // 常规模式：略偏太阳侧让星球呈高相位受光
+          tmpV1.addScaledVector(sunPos.clone().sub(wp2).normalize(), distA * 0.3);
+        } else {
+          // 潜入模式：靠飞船锚点一侧，保证顺光与同框
+          tmpV1.addScaledVector(axis.clone().negate(), distA * 0.25);
+        }
         tmpV1.y += distA * 0.34;
         if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
         const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
