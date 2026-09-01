@@ -604,18 +604,23 @@ export class ShipSystem {
       if (this.navLock && this.navTarget) {
         const t2 = this.navTarget;
         const wp2 = t2.mesh.getWorldPosition(tmpV1.set(0, 0, 0)).clone();
-        const toShip = tmpV2.subVectors(pos, wp2).normalize(); // 星球→飞船 单位向量
-        const dist2 = Math.max(t2.radius * 2.2, 6);
-        // 相机 = 星球与飞船连线方向上、位于飞船更外侧一点，并抬高
-        tmpV1.copy(pos).addScaledVector(toShip, dist2 * 0.55);
-        tmpV1.y += dist2 * 0.3;
+        // 相机放在卫星向阳侧：位于飞船锚点（向阳面）再往外、抬高一点，看向卫星亮面
+        const sunPos = this.sun ? this.sun.getWorldPosition(new THREE.Vector3()) : null;
+        const outDir = sunPos
+          ? wp2.clone().sub(sunPos).normalize() // 卫星背阳方向（= 相机应在的一侧的反向）
+          : pos.clone().sub(wp2).normalize();
+        // 相机 = 卫星向阳面锚点再往外推一点（更靠近太阳一侧），保证顺光
+        const anchorToSun = this._computeViewPosition(wp2, t2, tmpV2).clone();
+        const toSunSide = sunPos ? sunPos.clone().sub(anchorToSun).normalize() : toShipFallback();
+        function toShipFallback() { return pos.clone().sub(wp2).normalize(); }
+        tmpV1.copy(anchorToSun).addScaledVector(toSunSide, Math.max(t2.radius * 1.6, 4));
+        tmpV1.y += t2.radius * 1.2;
         if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
         const chaseDelta = tmpV3.subVectors(tmpV1, this._chasePrevAnchor);
         this._chasePrevAnchor.copy(tmpV1);
         cam.position.copy(tmpV1).add(chaseDelta);
-        // 相机看向星球与飞船之间（偏星球），二者同框且星球为主角
-        const lookTarget = new THREE.Vector3().addVectors(wp2, pos).multiplyScalar(0.35);
-        tmpM1.lookAt(cam.position, lookTarget, AIM_UP);
+        // 相机看向卫星本体（顺光亮面），飞船自然入画
+        tmpM1.lookAt(cam.position, wp2, AIM_UP);
         tmpQ1.setFromRotationMatrix(tmpM1);
         cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-10 * dt));
         this._cameraInsideGuard();
