@@ -443,8 +443,10 @@ export class SolarSystemScene {
       this.controls.update();
     }
     
-    // 防止相机进入星球内部
-    this.preventCameraInsidePlanets();
+    // 防止相机进入星球内部（飞船模式时由 ShipSystem 自己的守卫接管，避免拉锯）
+    if (!(this.shipSystem && this.shipSystem.enabled)) {
+      this.preventCameraInsidePlanets();
+    }
 
     // 更新后期处理 uniforms
     this.updatePostProcessing(time);
