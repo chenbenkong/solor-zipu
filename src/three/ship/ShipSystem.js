@@ -479,7 +479,7 @@ export class ShipSystem {
     }
     // 太阳守卫圈钳制：观赏点不得落在太阳碰撞守卫圈内（水星轨道在守卫圈内的兜底）
     if (this.sun && t.kind !== 'star') {
-      const sunGuard = 300 * 1.3 + 12;
+      const sunGuard = 327;
       const dSun = out.distanceTo(SUN_TMP);
       if (dSun < sunGuard) {
         out.sub(SUN_TMP).setLength(sunGuard).add(SUN_TMP);
@@ -564,7 +564,7 @@ export class ShipSystem {
     // 太阳
     if (this.sun) {
       const sp = this.sun.getWorldPosition(tmpV1.set(0, 0, 0));
-      const minD = 300 * 1.3;
+      const minD = 315;
       const d = this.shipState.position.distanceTo(sp);
       if (d < minD) {
         const dir = tmpV2.subVectors(this.shipState.position, sp);
@@ -695,7 +695,7 @@ export class ShipSystem {
         this.camera.position.copy(wp).addScaledVector(dir, minD);
       }
     };
-    if (this.sun) check(this.sun.getWorldPosition(tmpV1), 300);
+    if (this.sun) check(this.sun.getWorldPosition(tmpV1), 310);
     for (const p of this.planetMeshes) {
       check(p.mesh.getWorldPosition(tmpV1), p.radius);
     }
