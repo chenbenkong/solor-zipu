@@ -191,6 +191,7 @@ export class ShipSystem {
     this._jumpStart = this._time;
     this._navPrevDesired = null;
     this._lockPrevAnchor = null;
+    this._chasePrevAnchor = null;
 
     // 已有保存的最佳观赏位置 → 直接复用（不重新计算）
     const saved = this._loadSavedView();
