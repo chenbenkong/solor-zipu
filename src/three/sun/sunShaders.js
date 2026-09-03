@@ -179,12 +179,14 @@ export function createCoronaShader(radius) {
       }
 
       void main() {
-        // 视空间法线 z：边缘接近 0，正面接近 1 -> 用 1-dot 得到边缘亮环
-        float fres = pow(clamp(1.0 - dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 2.5);
+        // BackSide 球体：t = 0(外轮廓) -> 1(中心)，轮廓处 alpha 精确归零，无硬边
+        float t = clamp(-normalize(vNormal).z, 0.0, 1.0);
+        float outer = smoothstep(0.0, 0.3, t);
+        float band = 1.0 - smoothstep(0.25, 0.9, t);
         float turb = fbm(normalize(vWorldPos) * 3.0 + vec3(0.0, 0.0, time * 0.12));
-        float intensity = fres * (0.35 + 0.65 * turb);
+        float intensity = outer * band * (0.35 + 0.65 * turb);
         vec3 color = mix(vec3(1.0, 0.5, 0.12), vec3(1.0, 0.82, 0.45), turb);
-        gl_FragColor = vec4(color, intensity * 0.35);
+        gl_FragColor = vec4(color, intensity * 0.4);
       }
     `,
     side: THREE.BackSide,

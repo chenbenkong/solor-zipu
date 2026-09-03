@@ -13,39 +13,15 @@ export function createSun(manager) {
   sunTexture.anisotropy = 8;
 
   const sunMaterial = createSunSurfaceShader(sunTexture);
+  // HDR 亮度：表面超过 1.0，交由 Bloom 自然泛光，无需硬边壳层
+  sunMaterial.uniforms.brightness.value = 1.35;
 
   const sun = new THREE.Mesh(sunGeometry, sunMaterial);
   sun.position.set(0, 0, 0);
   sun.rotation.z = 0.126;
   sun.userData.surfaceMaterial = sunMaterial;
 
-  // 柔和临边辉光：宽三次菲涅尔，只给球体边缘一层薄薄的暖色大气感（非硬光环）
-  const rimGeometry = new THREE.SphereGeometry(sunRadius * 1.1, 64, 64);
-  const rimMaterial = new THREE.ShaderMaterial({
-    vertexShader: /* glsl */`
-      varying vec3 vNormal;
-      void main() {
-        vNormal = normalize(normalMatrix * normal);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: /* glsl */`
-      varying vec3 vNormal;
-      void main() {
-        float fres = pow(clamp(0.62 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 3.0);
-        vec3 col = mix(vec3(1.0, 0.86, 0.55), vec3(1.0, 0.55, 0.2), fres);
-        gl_FragColor = vec4(col, fres * 0.55);
-      }
-    `,
-    side: THREE.BackSide,
-    blending: THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite: false
-  });
-  const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-  sun.add(rim);
-
-  // 暖色体积光晕：指数衰减径向渐变精灵（低透明度，配合泛光呈现电影感光晕）
+  // 内层暖色光晕：紧凑柔和，仅贴近球缘的一圈氛围光（配合 Bloom）
   const halo = createSunHalo(sunRadius);
   sun.add(halo);
 
@@ -59,7 +35,7 @@ export function createSun(manager) {
   return sun;
 }
 
-// 太阳暖色光晕：指数式衰减的径向渐变精灵（比旧版更小更柔，避免“丑光环”）
+// 太阳暖色光晕：指数式衰减的径向渐变精灵（核心亮、外围极快速淡出）
 function createSunHalo(sunRadius) {
   const c = document.createElement('canvas');
   c.width = 256;
@@ -71,13 +47,13 @@ function createSunHalo(sunRadius) {
       const dx = (x - 128) / 128;
       const dy = (y - 128) / 128;
       const d = Math.sqrt(dx * dx + dy * dy);
-      // 指数衰减：核心亮、外围极快速淡出
-      const a = Math.exp(-d * 5.2) * (1 - Math.min(1, d));
+      // 更快的衰减：光晕紧贴球缘，不外溢成环
+      const a = Math.exp(-d * 6.5) * (1 - Math.min(1, d));
       const i = (y * 256 + x) * 4;
       img.data[i] = 255;
-      img.data[i + 1] = 205;
-      img.data[i + 2] = 140;
-      img.data[i + 3] = Math.max(0, Math.min(255, a * 255 * 0.55));
+      img.data[i + 1] = 190;
+      img.data[i + 2] = 120;
+      img.data[i + 3] = Math.max(0, Math.min(255, a * 255 * 0.4));
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -91,7 +67,7 @@ function createSunHalo(sunRadius) {
     depthWrite: false
   });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.setScalar(sunRadius * 2.6);
+  sprite.scale.setScalar(sunRadius * 2.2);
   return sprite;
 }
 

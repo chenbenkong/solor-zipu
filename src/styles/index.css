@@ -8,7 +8,7 @@
   --accent: #6ea8ff;
   --accent-2: #b07cff;
   --gold: #ffc46b;
-  --grad: linear-gradient(135deg, #6ea8ff 0%, #b07cff 100%);
+  --grad: linear-gradient(135deg, #ffd9a0 0%, #ff9d5c 100%);
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
@@ -205,7 +205,7 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 28px rgba(110, 168, 255, 0.35);
+  text-shadow: 0 0 28px rgba(255, 170, 90, 0.35);
 }
 
 .app-title-sub {
@@ -293,6 +293,7 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: 0 0 30px rgba(255, 170, 90, 0.3);
 }
 
 .loading-sub {
@@ -314,7 +315,7 @@ body {
   background: var(--grad);
   border-radius: 4px;
   transition: width 0.4s ease;
-  box-shadow: 0 0 12px rgba(110, 168, 255, 0.6);
+  box-shadow: 0 0 12px rgba(255, 170, 90, 0.6);
 }
 
 /* ============ 底部控制面板 ============ */
@@ -364,7 +365,7 @@ body {
 
 .slider-value {
   font-size: 0.8rem;
-  color: var(--accent);
+  color: var(--gold);
   min-width: 2.6rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -386,9 +387,9 @@ input[type="range"]::-webkit-slider-thumb {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: #fff;
+  background: #ffd9a0;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(110, 168, 255, 0.8);
+  box-shadow: 0 0 10px rgba(255, 170, 90, 0.8);
   transition: transform 0.15s ease;
 }
 
@@ -412,15 +413,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .ctrl-btn:hover,
 .toggle-btn:hover {
   background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 14px rgba(110, 168, 255, 0.3);
+  box-shadow: 0 0 14px rgba(255, 170, 90, 0.3);
 }
 
 .toggle-btn.active,
 .ctrl-btn.active {
   background: var(--grad);
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 0 16px rgba(110, 168, 255, 0.45);
+  color: #2a1608;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(255, 170, 90, 0.4);
 }
 
 /* ============ 行星信息卡（紧凑版） ============ */
@@ -575,13 +577,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .planet-label {
   position: absolute;
   transform: translate(-50%, -50%);
-  color: var(--text);
-  font-size: 0.78rem;
-  letter-spacing: 0.08rem;
-  padding: 0.15rem 0.5rem;
+  color: rgba(240, 244, 255, 0.9);
+  font-size: 0.7rem;
+  letter-spacing: 0.18rem;
+  padding: 0.14rem 0.6rem;
   border-radius: 999px;
-  background: rgba(10, 14, 30, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 10, 22, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   pointer-events: none;

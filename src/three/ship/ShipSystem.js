@@ -81,11 +81,13 @@ export class ShipSystem {
     this._targetInsideSun = false;
     this._chaseOrbit = 0;        // 第三视角环绕角（弧度，可 360° 旋转）
     this._chaseElev = 0.24;      // 第三视角仰角系数
-    this._chaseDist = 26;        // 第三视角距离（拉近感调校）
+    this._chaseDist = 13;        // 第三视角距离（随飞船缩小拉近）
 
     const built = createStarship(this.envMap);
     if (typeof window !== 'undefined') window.__shipDbg = this;
     this.ship = built.group;
+    this._shipScale = 0.45; // 飞船整体缩放：原模型比行星还大，缩至协调比例
+    this.ship.scale.setScalar(this._shipScale);
     this.shipParts = built;
     this.ship.visible = false;
     this.shipState = {
@@ -123,7 +125,7 @@ export class ShipSystem {
     // 相机接管前的原相机位姿（退出时恢复）
     this._savedCamPos = this.camera.position.clone();
     this._savedCamTarget = null;
-    this.orbitRadius = 14;
+    this.orbitRadius = 6.5;
   }
 
   disable() {
@@ -618,7 +620,7 @@ export class ShipSystem {
 
     if (this.cameraMode === 'cockpit') {
       // 第一视角：视点在气泡舷窗内，视线与机头一致（透过巨型舷窗观景）
-      tmpV1.set(0, 1.15, 1.35).applyQuaternion(q).add(pos);
+      tmpV1.set(0, 1.15 * this._shipScale, 1.35 * this._shipScale).applyQuaternion(q).add(pos);
       cam.position.lerp(tmpV1, this._camBlend);
       // 相机沿 -Z 观察：叠加 180 度翻转让视线透过机头(+Z)巨型舷窗
       tmpQ1.setFromAxisAngle(tmpV1.set(0, 1, 0), Math.PI);
@@ -664,7 +666,7 @@ export class ShipSystem {
       const effDist = this._chaseDist;
       tmpV1.set(
         Math.sin(this._chaseOrbit) * effDist,
-        Math.sin(this._chaseElev) * effDist * 0.45 + 3.2,
+        Math.sin(this._chaseElev) * effDist * 0.45 + 3.2 * this._shipScale,
         -Math.cos(this._chaseOrbit) * effDist
       ).applyQuaternion(q).add(pos);
       if (!this._chasePrevAnchor) this._chasePrevAnchor = tmpV1.clone();
@@ -676,7 +678,7 @@ export class ShipSystem {
       } else {
         cam.position.lerp(tmpV1, 1 - Math.exp(-8 * dt)).add(chaseDelta);
       }
-      tmpV2.set(0, 0.6, 1.5).applyQuaternion(q).add(pos);
+      tmpV2.set(0, 0.6 * this._shipScale, 1.5 * this._shipScale).applyQuaternion(q).add(pos);
       tmpM1.lookAt(cam.position, tmpV2, tmpV3.set(0, 1, 0).applyQuaternion(q));
       tmpQ1.setFromRotationMatrix(tmpM1);
       cam.quaternion.slerp(tmpQ1, 1 - Math.exp(-10 * dt));
@@ -687,7 +689,7 @@ export class ShipSystem {
       this._chasePrevAnchor = null;
       this.orbitAngle += dt * 0.1;
       const r = this.orbitRadius;
-      tmpV1.set(Math.sin(this.orbitAngle) * r, 4.2, Math.cos(this.orbitAngle) * r).add(pos);
+      tmpV1.set(Math.sin(this.orbitAngle) * r, 4.2 * this._shipScale, Math.cos(this.orbitAngle) * r).add(pos);
       cam.position.lerp(tmpV1, 1 - Math.exp(-2.5 * dt));
       tmpM1.lookAt(cam.position, pos, tmpV3.set(0, 1, 0));
       tmpQ1.setFromRotationMatrix(tmpM1);
@@ -794,7 +796,7 @@ export class ShipSystem {
   }
 
   zoomChase(factor) {
-    this._chaseDist = THREE.MathUtils.clamp(this._chaseDist * factor, 16, 90);
+    this._chaseDist = THREE.MathUtils.clamp(this._chaseDist * factor, 7, 90);
     this._chasePrevAnchor = null;
   }
 

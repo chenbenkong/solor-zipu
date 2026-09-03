@@ -183,11 +183,19 @@ export class SolarSystemScene {
     this.animate();
   }
 
-  // 深空背景：银河全景贴图（等距柱状投影），比纯色渐变更有纵深感
+  // 深空背景：银河全景贴图（等距柱状投影）+ 增亮与星云色调处理
   createSpaceBackground(manager) {
     if (manager) {
       const tex = new THREE.TextureLoader(manager).load(
-        import.meta.env.BASE_URL + 'textures/milkyway.jpg'
+        import.meta.env.BASE_URL + 'textures/milkyway.jpg',
+        (loaded) => {
+          // 加载完成后：canvas 增亮 + 星云氛围叠加，替换为处理后的背景
+          const enhanced = this._enhanceSpaceBackground(loaded.image);
+          if (enhanced) {
+            this.scene.background = enhanced;
+            this._spaceBackground = enhanced;
+          }
+        }
       );
       tex.mapping = THREE.EquirectangularReflectionMapping;
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -208,6 +216,44 @@ export class SolarSystemScene {
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
+  }
+
+  // 银河增亮 + 程序化星云色调：让深空背景更有层次与氛围
+  _enhanceSpaceBackground(image) {
+    try {
+      const w = 2048, h = 1024;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      // 增亮 + 增饱和，让银河带清晰可见
+      ctx.filter = 'brightness(1.55) saturate(1.35) contrast(1.05)';
+      ctx.drawImage(image, 0, 0, w, h);
+      ctx.filter = 'none';
+      // 星云色调叠加：大尺度柔和色块（screen 混合，低透明度）
+      ctx.globalCompositeOperation = 'screen';
+      const blobs = [
+        { x: 0.22, y: 0.42, r: 0.30, col: 'rgba(40, 70, 160, 0.10)' },
+        { x: 0.55, y: 0.50, r: 0.36, col: 'rgba(90, 50, 150, 0.09)' },
+        { x: 0.80, y: 0.40, r: 0.28, col: 'rgba(30, 100, 140, 0.08)' },
+        { x: 0.40, y: 0.55, r: 0.22, col: 'rgba(140, 60, 110, 0.06)' }
+      ];
+      blobs.forEach(b => {
+        const g = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, b.r * w);
+        g.addColorStop(0, b.col);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      const tex = new THREE.CanvasTexture(c);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      return tex;
+    } catch (e) {
+      console.warn('[solar] 背景增强失败，使用原始贴图：', e);
+      return null;
+    }
   }
 
   setupLighting() {
@@ -561,6 +607,10 @@ export class SolarSystemScene {
 
         if (this.sun.userData.particles && this.sun.userData.particles.userData.material) {
           this.sun.userData.particles.userData.material.uniforms.time.value = time;
+        }
+
+        if (this.sun.userData.coronaMaterial && this.sun.userData.coronaMaterial.uniforms) {
+          this.sun.userData.coronaMaterial.uniforms.time.value = time;
         }
       }
     }

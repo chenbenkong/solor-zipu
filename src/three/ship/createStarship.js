@@ -113,7 +113,7 @@ export function createStarship(envMap) {
   noseGeo.rotateX(Math.PI / 2); // 顶端(+Y) → +Z
   const nose = new THREE.Mesh(noseGeo, hullMat);
   nose.position.set(0, 0.15, 5.4);
-  nose.castShadow = true;
+  nose.castShadow = false;
   exterior.add(nose);
 
   // 机鼻传感器环（橙色识别环）
@@ -127,14 +127,14 @@ export function createStarship(envMap) {
   bodyGeo.rotateX(Math.PI / 2);
   const body = new THREE.Mesh(bodyGeo, hullMat);
   body.position.set(0, 0, 0.6);
-  body.castShadow = true;
+  body.castShadow = false;
   exterior.add(body);
 
   // 机腹装甲板
   const bellyGeo = new THREE.BoxGeometry(1.7, 0.5, 4.6);
   const belly = new THREE.Mesh(bellyGeo, darkMat);
   belly.position.set(0, -0.85, 0.4);
-  belly.castShadow = true;
+  belly.castShadow = false;
   exterior.add(belly);
 
   // 机脊背板
@@ -225,7 +225,7 @@ export function createStarship(envMap) {
     const wing = new THREE.Mesh(wingGeo, hullMat);
     wing.position.set(w.sz * 2.7, 0, w.sweep * 2.2);
     wing.rotation.y = w.sweep * 0.5;
-    wing.castShadow = true;
+    wing.castShadow = false;
     wingGroup.add(wing);
 
     // 翼尖航炮
@@ -263,7 +263,7 @@ export function createStarship(envMap) {
     const nx = w.sz * 1.75;
     const ny = w.sy * 0.95;
     nacelle.position.set(nx, ny, -1.7);
-    nacelle.castShadow = true;
+    nacelle.castShadow = false;
     ship.add(nacelle);
 
     // 进气口前环（橙色）
@@ -310,7 +310,7 @@ export function createStarship(envMap) {
 
     // 引擎点光源（第 1 台带真实光源，其余共享氛围即可）
     if (idx === 0) {
-      const eLight = new THREE.PointLight(0x66ccff, 2.2, 26, 2);
+      const eLight = new THREE.PointLight(0x66ccff, 2.2, 12, 2);
       eLight.position.set(0, 0, -3.6);
       ship.add(eLight);
       engineLights.push(eLight);

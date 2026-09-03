@@ -175,7 +175,7 @@ export const VignetteGrainShader = {
     tDiffuse: { value: null },
     vignetteIntensity: { value: 0.4 },
     vignetteFalloff: { value: 0.8 },
-    grainIntensity: { value: 0.035 },
+    grainIntensity: { value: 0.016 },
     time: { value: 0 }
   },
   vertexShader: /* glsl */`
@@ -252,7 +252,7 @@ export const LensFlareShader = {
 
       float dy = vUv.y - sunScreenPos.y;
       float dx = vUv.x - sunScreenPos.x;
-      float streak = exp(-abs(dy) * 50.0) * exp(-abs(dx) * 3.0) * 0.08;
+      float streak = exp(-abs(dy) * 60.0) * exp(-abs(dx) * 4.0) * 0.035;
 
       float dist = sqrt(dx * dx + dy * dy);
       float glow = exp(-dist * 12.0) * 0.12;
@@ -273,7 +273,7 @@ export const LensFlareShader = {
         }
       }
 
-      vec3 flare = vec3(0.5, 0.6, 1.0) * streak
+      vec3 flare = vec3(0.75, 0.8, 1.0) * streak
                  + vec3(1.0, 0.85, 0.6) * glow
                  + vec3(0.6, 0.7, 1.0) * ghost;
       color.rgb += flare * sunVisible;
