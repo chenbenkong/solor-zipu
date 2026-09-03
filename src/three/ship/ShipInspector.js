@@ -96,6 +96,11 @@ export class ShipInspector {
 
   _collectParts() {
     this.partList = [];
+    // 清理上次检视动态添加的细节件，防止重复进入时部件翻倍
+    if (this._detailParts) {
+      this._detailParts.forEach(m => { if (m.parent) m.parent.remove(m); });
+    }
+    this._detailParts = [];
     const rand = seeded(77001);
     const ship = this.ship;
     const center = new THREE.Vector3();
@@ -151,6 +156,7 @@ export class ShipInspector {
       if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
       m.userData.inspDetail = true;
       (parent || this.parts.exterior).add(m);
+      this._detailParts.push(m);
       this._registerPart(m, name, rand);
       return m;
     };
@@ -221,8 +227,10 @@ export class ShipInspector {
     });
     // 舱内细节：座椅/侧控制台/顶部管线
     addDetail(new THREE.BoxGeometry(0.6, 0.7, 0.5), darkLike, new THREE.Vector3(0, 0.5, 0.6), [0, 0, 0], '飞行员座椅', this.parts.interior);
-    addDetail(new THREE.BoxGeometry(0.16, 0.5, 1.4), darkLike, new THREE.Vector3(-0.8, 0.5, 1.6), [0, 0, 0], '左侧控制台', this.parts.interior);
-    addDetail(new THREE.BoxGeometry(0.16, 0.5, 1.4), darkLike, new THREE.Vector3(0.8, 0.5, 1.6), [0, 0, 0], '右侧控制台', this.parts.interior);
+    // 侧控制台挂入 consoleGroup：与仪表台同步显隐（收起控制台时一并隐藏）
+    const sideConsoleParent = this.parts.console || this.parts.interior;
+    addDetail(new THREE.BoxGeometry(0.16, 0.5, 1.4), darkLike, new THREE.Vector3(-0.8, 0.5, 1.6), [0, 0, 0], '左侧控制台', sideConsoleParent);
+    addDetail(new THREE.BoxGeometry(0.16, 0.5, 1.4), darkLike, new THREE.Vector3(0.8, 0.5, 1.6), [0, 0, 0], '右侧控制台', sideConsoleParent);
     for (let i = 0; i < 8; i++) {
       const geo = new THREE.CylinderGeometry(0.025, 0.025, 1.6, 6);
       geo.rotateX(Math.PI / 2);
@@ -313,6 +321,9 @@ export class ShipInspector {
 
     // 飞船姿态平滑回正（展示用）
     this.ss.shipState.quaternion.identity();
+    // 检视期间强制显示座舱控制台组（爆炸图需要其部件可见）
+    this._consoleWasVisible = this.ss.consoleVisible;
+    if (this.parts.console) this.parts.console.visible = true;
 
     // 相机初始：船侧前方
     const wp = this.ship.getWorldPosition(new THREE.Vector3());
@@ -355,6 +366,14 @@ export class ShipInspector {
     this.platform.visible = false;
     this.cabinLight.visible = false;
     this.labelEl.style.display = 'none';
+    // 退出时移除动态细节件，飞船恢复原貌（避免侧控制台等黑块残留）
+    if (this._detailParts) {
+      this._detailParts.forEach(m => { if (m.parent) m.parent.remove(m); });
+      this._detailParts = [];
+    }
+    this.partList = [];
+    // 恢复控制台显隐（收起状态时侧控制台等一并隐藏）
+    if (this.parts.console) this.parts.console.visible = this._consoleWasVisible !== false;
 
     this.dom.removeEventListener('pointerdown', this._onPointerDown);
     window.removeEventListener('pointermove', this._onPointerMove);
