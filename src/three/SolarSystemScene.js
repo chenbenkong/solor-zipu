@@ -1073,6 +1073,23 @@ export class SolarSystemScene {
     if (this.shipSystem) this.shipSystem.toggleConsole();
   }
 
+  shipEnterInspect() {
+    if (this.shipSystem) return this.shipSystem.enterInspection();
+    return false;
+  }
+
+  shipExitInspect() {
+    if (this.shipSystem) this.shipSystem.exitInspection();
+  }
+
+  shipInspectMode(m) {
+    if (this.shipSystem) this.shipSystem.inspector.setMode(m);
+  }
+
+  shipInspectExplode(f) {
+    if (this.shipSystem) this.shipSystem.inspector.setExplodeFactor(f);
+  }
+
   shipStick(x, y) {
     if (this.shipSystem) this.shipSystem.setStick(x, y);
   }

@@ -490,3 +490,190 @@
   .virt-throttle { right: 12px; bottom: 120px; height: 110px; }
   .chase-orbit-hint { display: none; }
 }
+
+/* ============ 飞船细节检视系统 ============ */
+.cockpit-inspect-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 30;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffd9a0;
+  background: rgba(12, 12, 20, 0.62);
+  border: 1px solid rgba(255, 180, 84, 0.55);
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.15s, box-shadow 0.15s;
+  text-shadow: 0 0 10px rgba(255, 180, 84, 0.4);
+}
+.cockpit-inspect-btn:hover {
+  background: rgba(255, 180, 84, 0.18);
+  box-shadow: 0 0 20px rgba(255, 180, 84, 0.35);
+}
+
+/* 检视控制台（左上） */
+.insp-panel {
+  position: absolute;
+  top: 60px;
+  left: 18px;
+  z-index: 30;
+  width: 250px;
+  padding: 12px 14px;
+  background: rgba(8, 8, 14, 0.72);
+  border: 1px solid rgba(255, 180, 84, 0.35);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  animation: inspFade 0.3s ease;
+}
+@keyframes inspFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.insp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.insp-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffb454;
+}
+.insp-count {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: rgba(242, 231, 213, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+.insp-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.insp-mode {
+  appearance: none;
+  padding: 7px 2px;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: #f2e7d5;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.insp-mode:hover { background: rgba(255, 180, 84, 0.14); }
+.insp-mode.active {
+  background: rgba(255, 180, 84, 0.24);
+  border-color: #ffb454;
+  color: #fff;
+  font-weight: 700;
+}
+.insp-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.insp-slider-label {
+  font-size: 0.68rem;
+  color: rgba(242, 231, 213, 0.7);
+  white-space: nowrap;
+}
+.insp-slider-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+  cursor: pointer;
+}
+.insp-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffb454;
+  box-shadow: 0 0 8px rgba(255, 180, 84, 0.7);
+}
+.insp-slider-val {
+  font-size: 0.68rem;
+  color: #ffb454;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.insp-hint {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  color: rgba(242, 231, 213, 0.5);
+  text-align: center;
+}
+.insp-exit {
+  appearance: none;
+  padding: 7px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #ff9a9a;
+  background: rgba(255, 90, 90, 0.1);
+  border: 1px solid rgba(255, 90, 90, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.insp-exit:hover { background: rgba(255, 90, 90, 0.22); }
+
+/* 悬停部件标签 + 引导线 */
+.insp-label {
+  position: absolute;
+  z-index: 40;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: #ffd9a0;
+  background: rgba(10, 10, 16, 0.82);
+  border: 1px solid rgba(255, 180, 84, 0.6);
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(255, 180, 84, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.insp-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 39;
+  pointer-events: none;
+}
+.insp-lead {
+  stroke: rgba(255, 180, 84, 0.7);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+/* 检视模式下隐藏飞行操控件 */
+.cockpit-hud[data-inspect="on"] .virt-stick,
+.cockpit-hud[data-inspect="on"] .virt-throttle,
+.cockpit-hud[data-inspect="on"] .viewport-frame,
+.cockpit-hud[data-inspect="on"] .cockpit-console,
+.cockpit-hud[data-inspect="on"] .cockpit-statusbar,
+.cockpit-hud[data-inspect="on"] .chase-orbit-hint,
+.cockpit-hud[data-inspect="on"] .cockpit-hint {
+  display: none;
+}

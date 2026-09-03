@@ -345,6 +345,20 @@ export default function App() {
     sceneRef.current?.shipOrbit?.(dTheta, dElev, zoomFactor);
   }, []);
 
+  /* ---------- 飞船细节检视（爆炸图/360°/舱内漫游） ---------- */
+  const handleEnterInspect = useCallback(() => {
+    sceneRef.current?.shipEnterInspect();
+  }, []);
+  const handleExitInspect = useCallback(() => {
+    sceneRef.current?.shipExitInspect();
+  }, []);
+  const handleInspectMode = useCallback((m) => {
+    sceneRef.current?.shipInspectMode(m);
+  }, []);
+  const handleInspectExplode = useCallback((f) => {
+    sceneRef.current?.shipInspectExplode(f);
+  }, []);
+
   // 进入黑洞体验：挂起太阳系渲染（省 GPU），卸载时恢复
   const handleEnterBlackHole = useCallback(() => {
     setBlackHoleMode(true);
@@ -473,6 +487,10 @@ export default function App() {
           onStickRoll={handleShipStickRoll}
           onStickThrottle={handleShipThrottle}
           onOrbit={handleShipOrbit}
+          onEnterInspect={handleEnterInspect}
+          onExitInspect={handleExitInspect}
+          onInspectMode={handleInspectMode}
+          onInspectExplode={handleInspectExplode}
         />
       )}
 
