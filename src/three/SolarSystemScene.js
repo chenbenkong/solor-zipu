@@ -1073,6 +1073,15 @@ export class SolarSystemScene {
     if (this.shipSystem) this.shipSystem.toggleConsole();
   }
 
+  shipSwap(shipId) {
+    if (this.shipSystem) return this.shipSystem.swapShip(shipId);
+    return false;
+  }
+
+  getShipId() {
+    return this.shipSystem ? this.shipSystem.shipId : 'falcon';
+  }
+
   shipEnterInspect() {
     if (this.shipSystem) return this.shipSystem.enterInspection();
     return false;

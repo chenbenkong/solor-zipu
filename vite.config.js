@@ -8,5 +8,21 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true
+  },
+  build: {
+    chunkSizeWarningLimit: 1024,
+    rollupOptions: {
+      output: {
+        // 代码分割：three 与 react 独立分包，首屏并行加载、浏览器可长期缓存
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three')) return 'vendor-three';
+            if (id.includes('react') || id.includes('scheduler') || id.includes('jsxs')) return 'vendor-react';
+            return 'vendor';
+          }
+          return null;
+        }
+      }
+    }
   }
 })

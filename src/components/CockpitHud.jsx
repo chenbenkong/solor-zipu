@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { SHIP_VARIANTS } from '../three/ship/shipRegistry.js';
 
 /**
  * 星隼号 ZF-77 驾驶舱 HUD —— 第一视角舱内界面
@@ -141,7 +142,7 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
       {hud.inspect && (
         <div className="insp-panel">
           <div className="insp-head">
-            <span className="insp-title">⬡ 星隼号 · 结构检视</span>
+            <span className="insp-title">⬡ {(SHIP_VARIANTS.find(v => v.id === hud.shipId) || SHIP_VARIANTS[0]).name} · 结构检视</span>
             <span className="insp-count">{hud.partCount} 部件</span>
           </div>
           <div className="insp-modes">
@@ -214,7 +215,7 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
         <div className="vf-tick vf-tick-3" />
         <div className="vf-tick vf-tick-4" />
         <div className="vf-readout vf-readout-l">
-          <span>ZF-77 星隼号</span>
+          <span>{(SHIP_VARIANTS.find(v => v.id === hud.shipId) || SHIP_VARIANTS[0]).name}</span>
           <span>舷窗结构 · 透明复合装甲</span>
         </div>
         <div className="vf-readout vf-readout-r">

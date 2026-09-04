@@ -60,6 +60,16 @@ export class ShipInspector {
     this.pointer = new THREE.Vector2();
     this.pointerActive = false;
 
+    // 检视补光：跟随飞船的冷暖双点光，保证部件细节清晰
+    this.keyFill = new THREE.PointLight(0xfff0d8, 1.8, 60, 1.2);
+    this.keyFill.position.set(14, 12, 10);
+    this.ship.add(this.keyFill);
+    this.rimFill = new THREE.PointLight(0x6ea8ff, 1.2, 60, 1.2);
+    this.rimFill.position.set(-14, -6, -12);
+    this.ship.add(this.rimFill);
+    this.keyFill.visible = false;
+    this.rimFill.visible = false;  // 默认隐藏，仅检视时开启
+
     // 舱内照明灯（漫游模式启用）
     this.cabinLight = new THREE.PointLight(0xcfe0ff, 2.6, 7, 1.6);
     this.cabinLight.position.set(0, 1.3, 1.4);
@@ -256,8 +266,10 @@ export class ShipInspector {
       const parentInv = new THREE.Quaternion();
       pt.mesh.parent.getWorldQuaternion(parentInv).invert();
       pt.dirLocal = dirW.applyQuaternion(parentInv);
-      // 爆炸距离基于局部尺寸：部件离船心越远飞得越远
-      pt.dist = 1.6 + rand() * 2.2 + lp.length() * 0.55;
+      // 爆炸距离：径向外扩 + 沿主结构轴分层，让大型爆炸图疏朗通透
+      const radialBoost = 3.4 + rand() * 5.2;
+      const layerBoost = lp.length() * 1.5;
+      pt.dist = radialBoost + layerBoost;
     });
 
     void detailMat;
@@ -317,10 +329,17 @@ export class ShipInspector {
   enter() {
     if (this.active) return;
     this.active = true;
+    // 先同步飞船引用（swapShip 后 ship 实例会变化），再收集部件与挂补光灯
+    this.ship = this.ss.ship;
+    this.parts = this.ss.shipParts;
+    if (this.keyFill.parent !== this.ship) this.ship.add(this.keyFill);
+    if (this.rimFill.parent !== this.ship) this.ship.add(this.rimFill);
     this._collectParts();
 
     // 飞船姿态平滑回正（展示用）
     this.ss.shipState.quaternion.identity();
+    this.keyFill.visible = true;
+    this.rimFill.visible = true;
     // 检视期间强制显示座舱控制台组（爆炸图需要其部件可见）
     this._consoleWasVisible = this.ss.consoleVisible;
     if (this.parts.console) this.parts.console.visible = true;
@@ -365,6 +384,8 @@ export class ShipInspector {
     this._applyExplode(0);
     this.platform.visible = false;
     this.cabinLight.visible = false;
+    this.keyFill.visible = false;
+    this.rimFill.visible = false;
     this.labelEl.style.display = 'none';
     // 退出时移除动态细节件，飞船恢复原貌（避免侧控制台等黑块残留）
     if (this._detailParts) {
@@ -389,7 +410,7 @@ export class ShipInspector {
     if (m === 'exploded') {
       this.explodeTarget = 1;
       this.platform.visible = true;
-      this.orbit.targetDist = 20;
+      this.orbit.targetDist = 22;
       this.cabinLight.visible = false;
     } else if (m === 'assembled') {
       this.cabinLight.visible = false;

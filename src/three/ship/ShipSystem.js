@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStarship } from './createStarship.js';
+import { createArrowhead, createFrostring, createNightblade } from './createShipVariants.js';
 import { ShipInspector } from './ShipInspector.js';
 
 /**
@@ -100,6 +101,8 @@ export class ShipSystem {
     this.shipRenderQ = new THREE.Quaternion();
     scene.add(this.ship);
 
+    this.shipId = 'falcon'; // 当前机型标识
+
     // 飞船细节检视系统（爆炸图/360°展示/舱内漫游）
     this.inspector = new ShipInspector(this);
   }
@@ -140,6 +143,48 @@ export class ShipSystem {
     this.navPhase = 'idle';
     this.throttle = 0;
     this.shipParts.setThrottle(0);
+  }
+
+  /* ================= 飞船热切换（机库选型） ================= */
+
+  swapShip(shipId) {
+    const builders = { falcon: createStarship, arrowhead: createArrowhead, frostring: createFrostring, nightblade: createNightblade };
+    const builder = builders[shipId];
+    if (!builder) return false;
+    // 记录旧飞船状态
+    const pos = this.shipState.position.clone();
+    const quat = this.ship.scale ? this.ship.quaternion.clone() : new THREE.Quaternion();
+    void quat;
+    // 释放旧飞船
+    if (this.ship) {
+      this.scene.remove(this.ship);
+      this.ship.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+        }
+      });
+    }
+    // 建造新飞船
+    const built = builder(null);
+    this.ship = built.group;
+    this.shipParts = built;
+    this.ship.scale.setScalar(this._shipScale);
+    this.ship.position.copy(pos);
+    this.scene.add(this.ship);
+    this.shipId = shipId;
+    // 同步检视系统引用
+    this.inspector.ship = this.ship;
+    this.inspector.parts = this.shipParts;
+    this.inspector.partList = [];
+    // 同步显隐
+    this.ship.visible = this.enabled;
+    this.shipParts.exterior.visible = this.cameraMode !== 'cockpit';
+    if (this.shipParts.innerGlass) this.shipParts.innerGlass.visible = this.cameraMode === 'cockpit';
+    if (this.shipParts.console) this.shipParts.console.visible = this.consoleVisible;
+    this.shipParts.setThrottle(this.mode === 'cruise' ? this.throttle : 0);
+    return true;
   }
 
   /* ================= 飞船细节检视 ================= */
@@ -857,6 +902,7 @@ export class ShipSystem {
       consoleVisible: this.consoleVisible,
       message: msg ? msg.text : null,
       tone: msg ? msg.tone : null,
+      shipId: this.shipId,
       inspect: this.inspector.active,
       inspectMode: this.inspector.mode,
       partCount: this.inspector.partCount,

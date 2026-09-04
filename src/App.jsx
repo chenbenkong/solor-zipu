@@ -8,6 +8,7 @@ import { PlanetLabels } from './components/PlanetLabels';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { BlackHoleOverlay } from './components/BlackHoleOverlay';
+import { ShipGarageOverlay } from './components/ShipGarageOverlay';
 import { CockpitHud } from './components/CockpitHud';
 import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/planetData';
 import './styles/index.css';
@@ -72,6 +73,7 @@ export default function App() {
   const [fatalError, setFatalError] = useState(null);
   const [blackHoleMode, setBlackHoleMode] = useState(false);
   const [shipMode, setShipMode] = useState(false);
+  const [garageOpen, setGarageOpen] = useState(false); // 星舰机库选型界面
   const [shipHud, setShipHud] = useState(null);
 
   // 全局捕获未被 React 边界兜住的运行时错误，直接显示在页面上
@@ -345,10 +347,15 @@ export default function App() {
     sceneRef.current?.shipOrbit?.(dTheta, dElev, zoomFactor);
   }, []);
 
-  /* ---------- 飞船细节检视（爆炸图/360°/舱内漫游） ---------- */
-  const handleEnterInspect = useCallback(() => {
-    sceneRef.current?.shipEnterInspect();
+  /* ---------- 星舰机库（独立选型空间）+ 结构检视 ---------- */
+  const handleEnterInspect = useCallback(() => setGarageOpen(true), []);
+  const handleGarageConfirm = useCallback((shipId) => {
+    setGarageOpen(false);
+    sceneRef.current?.shipSwap(shipId);
+    // 切换后立即进入结构检视
+    setTimeout(() => sceneRef.current?.shipEnterInspect(), 220);
   }, []);
+  const handleGarageExit = useCallback(() => setGarageOpen(false), []);
   const handleExitInspect = useCallback(() => {
     sceneRef.current?.shipExitInspect();
   }, []);
@@ -495,6 +502,15 @@ export default function App() {
       )}
 
       {blackHoleMode && <BlackHoleOverlay onExit={handleExitBlackHole} />}
+
+      {/* 星舰机库：独立选型空间 */}
+      {garageOpen && (
+        <ShipGarageOverlay
+          currentShipId={sceneRef.current?.getShipId?.()}
+          onConfirm={handleGarageConfirm}
+          onExit={handleGarageExit}
+        />
+      )}
       </div>
     </ErrorBoundary>
   );
