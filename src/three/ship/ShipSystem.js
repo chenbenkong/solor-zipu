@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { createStarship } from './createStarship.js';
 import { createArrowhead, createFrostring, createNightblade } from './createShipVariants.js';
-import { ShipInspector } from './ShipInspector.js';
 
 /**
  * 星隼号 ZF-77 —— 飞行 / 导航 / 视角系统
@@ -103,8 +102,6 @@ export class ShipSystem {
 
     this.shipId = 'falcon'; // 当前机型标识
 
-    // 飞船细节检视系统（爆炸图/360°展示/舱内漫游）
-    this.inspector = new ShipInspector(this);
   }
 
   /* ================= 生命周期 ================= */
@@ -137,7 +134,6 @@ export class ShipSystem {
 
   disable() {
     this.enabled = false;
-    if (this.inspector) this.inspector.exit();
     this.ship.visible = false;
     if (this.sun) this.sun.visible = true;    this.navLock = false;
     this.navPhase = 'idle';
@@ -174,10 +170,6 @@ export class ShipSystem {
     this.ship.position.copy(pos);
     this.scene.add(this.ship);
     this.shipId = shipId;
-    // 同步检视系统引用
-    this.inspector.ship = this.ship;
-    this.inspector.parts = this.shipParts;
-    this.inspector.partList = [];
     // 同步显隐
     this.ship.visible = this.enabled;
     this.shipParts.exterior.visible = this.cameraMode !== 'cockpit';
@@ -185,29 +177,6 @@ export class ShipSystem {
     if (this.shipParts.console) this.shipParts.console.visible = this.consoleVisible;
     this.shipParts.setThrottle(this.mode === 'cruise' ? this.throttle : 0);
     return true;
-  }
-
-  /* ================= 飞船细节检视 ================= */
-
-  enterInspection() {
-    if (!this.enabled) return false;
-    this.navLock = false;
-    this.navPhase = 'idle';
-    this.navTarget = null;
-    this.mode = 'orbit';
-    this.throttle = 0;
-    this._stickX = 0; this._stickY = 0; this._stickRoll = 0; this._stickThrottle = 0;
-    // 展示姿态回正
-    this.shipState.quaternion.identity();
-    this.inspector.enter();
-    return true;
-  }
-
-  exitInspection() {
-    if (!this.inspector.active) return;
-    this.inspector.exit();
-    this._camBlend = 0;
-    this._chasePrevAnchor = null;
   }
 
   /* ================= 输入接口 ================= */
@@ -330,17 +299,6 @@ export class ShipSystem {
   update(dt, timeSpeed, isPaused) {
     if (!this.enabled) return;
     this._time += dt;
-
-    // 检视模式：飞船静止，相机/爆炸/悬停由检视系统接管
-    if (this.inspector && this.inspector.active) {
-      this.ship.position.lerp(this.shipState.position, 1 - Math.exp(-14 * dt));
-      this.ship.quaternion.slerp(this.shipState.quaternion, 1 - Math.exp(-10 * dt));
-      this.shipRenderQ.copy(this.ship.quaternion);
-      this.shipParts.setThrottle(0);
-      this.displaySpeed += (0 - this.displaySpeed) * Math.min(1, dt * 6);
-      this.inspector.update(dt);
-      return;
-    }
 
     // 内行星潜入式观赏：水星轨道(230)在太阳可视半径(300)内。
     // 太阳网格为 FrontSide 材质，从内部看因背面剔除自动隐形 —— 潜入后太阳消失、水星可见。
@@ -814,10 +772,6 @@ export class ShipSystem {
     };
     this._onKeyDown = (e) => {
       if (!this.enabled) return;
-      if (this.inspector && this.inspector.active) {
-        if (e.code === 'KeyX') this.exitInspection();
-        return; // 检视模式下飞行键失效（WASD 由检视系统用于舱内漫游）
-      }
       if (e.code === 'KeyV') { this.toggleCameraMode(); return; }
       if (e.code === 'KeyC') { this.toggleConsole(); return; }
       const k = map[e.code];
@@ -903,10 +857,6 @@ export class ShipSystem {
       message: msg ? msg.text : null,
       tone: msg ? msg.tone : null,
       shipId: this.shipId,
-      inspect: this.inspector.active,
-      inspectMode: this.inspector.mode,
-      partCount: this.inspector.partCount,
-      explode: Math.round(this.inspector.explodeTarget * 100)
     };
   }
 

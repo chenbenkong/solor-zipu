@@ -1083,20 +1083,8 @@ export class SolarSystemScene {
   }
 
   shipEnterInspect() {
-    if (this.shipSystem) return this.shipSystem.enterInspection();
+    // 结构检视已全面迁入星舰机库（ShipGarageScene），太空场景不再提供
     return false;
-  }
-
-  shipExitInspect() {
-    if (this.shipSystem) this.shipSystem.exitInspection();
-  }
-
-  shipInspectMode(m) {
-    if (this.shipSystem) this.shipSystem.inspector.setMode(m);
-  }
-
-  shipInspectExplode(f) {
-    if (this.shipSystem) this.shipSystem.inspector.setExplodeFactor(f);
   }
 
   shipStick(x, y) {

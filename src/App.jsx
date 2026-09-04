@@ -347,7 +347,7 @@ export default function App() {
     sceneRef.current?.shipOrbit?.(dTheta, dElev, zoomFactor);
   }, []);
 
-  /* ---------- 星舰机库（独立选型空间）+ 结构检视 ---------- */
+  /* ---------- 星舰机库（选型 + 结构检视均在机库内完成） ---------- */
   const handleEnterInspect = useCallback(() => setGarageOpen(true), []);
   const handleGarageConfirm = useCallback((shipId) => {
     setGarageOpen(false);
@@ -355,15 +355,6 @@ export default function App() {
     sceneRef.current?.shipSwap(shipId);
   }, []);
   const handleGarageExit = useCallback(() => setGarageOpen(false), []);
-  const handleExitInspect = useCallback(() => {
-    sceneRef.current?.shipExitInspect();
-  }, []);
-  const handleInspectMode = useCallback((m) => {
-    sceneRef.current?.shipInspectMode(m);
-  }, []);
-  const handleInspectExplode = useCallback((f) => {
-    sceneRef.current?.shipInspectExplode(f);
-  }, []);
 
   // 进入黑洞体验：挂起太阳系渲染（省 GPU），卸载时恢复
   const handleEnterBlackHole = useCallback(() => {
@@ -494,9 +485,6 @@ export default function App() {
           onStickThrottle={handleShipThrottle}
           onOrbit={handleShipOrbit}
           onEnterInspect={handleEnterInspect}
-          onExitInspect={handleExitInspect}
-          onInspectMode={handleInspectMode}
-          onInspectExplode={handleInspectExplode}
         />
       )}
 

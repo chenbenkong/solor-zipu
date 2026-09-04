@@ -13,6 +13,67 @@ const BUILDERS = {
   nightblade: createNightblade
 };
 
+/**
+ * 程序化大理石纹理：象牙白底 + 灰金脉络 + 细微颗粒（value noise fbm）
+ * 用于机库地面/展台/墙裙，营造雕刻大理石展厅质感
+ */
+export function createMarbleTexture(size = 1024, opts = {}) {
+  const base = opts.base || [247, 247, 246];
+  const vein = opts.vein || [188, 190, 194];
+  const seed = opts.seed || 7;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  let s0 = seed;
+  const rnd = () => { s0 = (s0 * 16807) % 21483647; return (s0 % 100000) / 100000; };
+  // 可平铺 value noise（周期 = grid，保证接缝连续）
+  const grid = 8;
+  const nt = new Float32Array(grid * grid);
+  for (let i = 0; i < nt.length; i++) nt[i] = rnd();
+  const noise = (x, y) => {
+    const fx = x * grid, fy = y * grid;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const g = (a, b) => nt[(((b % grid) + grid) % grid) * grid + (((a % grid) + grid) % grid)];
+    const n00 = g(x0, y0), n10 = g(x0 + 1, y0), n01 = g(x0, y0 + 1), n11 = g(x0 + 1, y0 + 1);
+    return n00 + (n10 - n00) * sx + (n01 - n00) * sy + (n00 - n10 - n01 + n11) * sx * sy;
+  };
+  // 低频湍流：2 个八度即可，让脉络缓慢蜿蜒而非碎裂
+  const turb = (x, y) => noise(x, y) * 0.7 + noise(x * 2, y * 2) * 0.3;
+  // 暖金次级通道：独立低频场，制造石材温润的深浅分区
+  const gold = (x, y) => noise(x * 1.1 + 3.7, y * 1.1 + 9.1);
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const x = px / size, y = py / size;
+      // 主脉：正弦条纹受低频湍流扭曲，高幂次锐化 -> 细长蜿蜒的深灰脉
+      const t = turb(x * 1.6, y * 1.6);
+      const band = Math.sin((x * 2.4 + y * 1.0 + t * 1.5) * Math.PI);
+      const main = Math.pow(Math.max(0, -band), 26);
+      // 发丝细脉：另一方向的窄丝线，稀疏而淡
+      const t2 = turb(x * 2.2 + 5.2, y * 2.2 + 2.7);
+      const band2 = Math.sin((x * 1.4 - y * 3.0 + t2 * 1.3) * Math.PI);
+      const fine = Math.pow(Math.max(0, -band2), 50) * 0.55;
+      // 大块柔和明暗 + 极轻云斑（无颗粒感）
+      const shade = (turb(x * 1.5, y * 1.5) - 0.5) * 9 + (gold(x * 3, y * 3) - 0.5) * 4;
+      // 暖金晕：沿脉络边缘淡淡渗出，仿卡拉拉暖金包体
+      const gv = Math.pow(Math.max(0, -band), 8) * Math.max(0, gold(x * 1.4, y * 1.4) - 0.45) * 0.6;
+      const m = Math.min(1, main + fine);
+      const i = (py * size + px) * 4;
+      img.data[i] = base[0] + (vein[0] - base[0]) * m + shade + gv * 14;
+      img.data[i + 1] = base[1] + (vein[1] - base[1]) * m + shade + gv * 9;
+      img.data[i + 2] = base[2] + (vein[2] - base[2]) * m + shade - gv * 4;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 const tmpV3 = new THREE.Vector3();
 const tmpQ3 = new THREE.Quaternion();
 const tmpM3 = new THREE.Matrix4();
@@ -67,7 +128,7 @@ export class ShipGarageScene {
     this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 0.88;
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -100,7 +161,7 @@ export class ShipGarageScene {
     // 后处理：轻 Bloom，白色环境仅点亮金属高光
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.24, 0.5, 0.92);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.15, 0.45, 0.95);
     this.composer.addPass(this.bloom);
 
     this._bindInput();
@@ -116,10 +177,10 @@ export class ShipGarageScene {
     c.width = 4; c.height = 256;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, '#dfe7f2');
-    g.addColorStop(0.45, '#f6f9fc');
-    g.addColorStop(0.55, '#eef2f7');
-    g.addColorStop(1, '#c9d3df');
+    g.addColorStop(0, '#c8c9cc');
+    g.addColorStop(0.45, '#e8e8e9');
+    g.addColorStop(0.55, '#dedee0');
+    g.addColorStop(1, '#a9abb0');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 4, 256);
     const tex = new THREE.CanvasTexture(c);
@@ -128,36 +189,41 @@ export class ShipGarageScene {
   }
 
   _buildLighting() {
-    // 半球光：天光白 / 地光冷灰
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xc8d2de, 1.35));
-    // 主光：顶部柔光箱
-    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    // 半球光：暖石色天光 / 灰岩地光（压低强度，避免刺眼）
+    this.scene.add(new THREE.HemisphereLight(0xfdf8f0, 0xa8a8ac, 0.75));
+    // 主光：顶部暖白柔光箱
+    const key = new THREE.DirectionalLight(0xfff2e2, 1.5);
     key.position.set(6, 14, 8);
     this.scene.add(key);
-    // 补光：侧后冷蓝，勾勒金属轮廓
-    const rim = new THREE.DirectionalLight(0xbcd8ff, 1.1);
+    // 补光：侧后冷灰，勾勒金属轮廓
+    const rim = new THREE.DirectionalLight(0xcfd6de, 0.62);
     rim.position.set(-9, 5, -10);
     this.scene.add(rim);
     // 正面低强度填充，消除死黑
-    const fill = new THREE.DirectionalLight(0xffffff, 0.55);
+    const fill = new THREE.DirectionalLight(0xf4efe6, 0.3);
     fill.position.set(0, 2, 12);
     this.scene.add(fill);
   }
 
   _buildFloor() {
-    // 高光白瓷地面
+    // 大理石地面：程序化脉络纹理，哑光低反光
+    const marbleFloor = createMarbleTexture(1024, { seed: 11 });
+    marbleFloor.repeat.set(2.2, 2.2);
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(60, 96),
-      new THREE.MeshStandardMaterial({ color: 0xf2f5f8, metalness: 0.1, roughness: 0.22 })
+      new THREE.MeshStandardMaterial({
+        map: marbleFloor, color: 0xeeece6,
+        metalness: 0.04, roughness: 0.5
+      })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -6.4;
     this.scene.add(floor);
 
-    // 地面细网格（浅灰蓝，克制）
-    const grid = new THREE.GridHelper(80, 80, 0xaebdd0, 0xd6deea);
+    // 地面细网格（暖石灰，克制）
+    const grid = new THREE.GridHelper(80, 80, 0xb8b4ac, 0xd8d5cf);
     grid.material.transparent = true;
-    grid.material.opacity = 0.4;
+    grid.material.opacity = 0.16;
     grid.position.y = -6.38;
     this.scene.add(grid);
 
@@ -181,10 +247,15 @@ export class ShipGarageScene {
 
   _buildPlatform() {
     const g = new THREE.Group();
-    // 主展台圆盘（略亮于地面，形成层级）
+    // 主展台圆盘：整块大理石雕台（纹理 + 哑光）
+    const marblePed = createMarbleTexture(512, { seed: 23, base: [248, 247, 245] });
+    marblePed.repeat.set(1.6, 1.6);
     const disc = new THREE.Mesh(
       new THREE.CylinderGeometry(6.6, 6.8, 0.22, 96),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.2, roughness: 0.15 })
+      new THREE.MeshStandardMaterial({
+        map: marblePed, color: 0xf1efe9,
+        metalness: 0.03, roughness: 0.45
+      })
     );
     g.add(disc);
     // 青色发光环（科幻点缀，唯一强色）
@@ -201,8 +272,8 @@ export class ShipGarageScene {
       g.add(m);
       return m;
     };
-    this.ring1 = mkRing(6.42, 6.52, 0.85);
-    this.ring2 = mkRing(5.2, 5.24, 0.4);
+    this.ring1 = mkRing(6.42, 6.52, 0.55);
+    this.ring2 = mkRing(5.2, 5.24, 0.26);
     // 展台刻度
     for (let i = 0; i < 48; i++) {
       const a = (i / 48) * Math.PI * 2;
@@ -233,7 +304,7 @@ export class ShipGarageScene {
 
   _buildWallDetails() {
     // 背景竖向光带阵列（暗示无限延伸的白色机库墙）
-    const bandMat = new THREE.MeshBasicMaterial({ color: 0xdfe8f4, transparent: true, opacity: 0.55 });
+    const bandMat = new THREE.MeshBasicMaterial({ color: 0xd4d6da, transparent: true, opacity: 0.3 });
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * Math.PI * 2;
       const band = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 16), bandMat);
@@ -244,7 +315,7 @@ export class ShipGarageScene {
     // 地平线光带（青色细线，强化空间感）
     const horizon = new THREE.Mesh(
       new THREE.TorusGeometry(46, 0.06, 8, 128),
-      new THREE.MeshBasicMaterial({ color: 0x35c8ff, transparent: true, opacity: 0.35 })
+      new THREE.MeshBasicMaterial({ color: 0x35c8ff, transparent: true, opacity: 0.22 })
     );
     horizon.rotation.x = Math.PI / 2;
     horizon.position.y = -6.2;
@@ -447,7 +518,7 @@ export class ShipGarageScene {
     }
 
     // 展台动效
-    this.ring1.material.opacity = 0.65 + Math.sin(t * 1.8) * 0.2;
+    this.ring1.material.opacity = 0.42 + Math.sin(t * 1.8) * 0.14;
     this.holoArcs.forEach((arc, i) => {
       arc.rotation.z += dt * (i % 2 === 0 ? 0.12 : -0.09);
     });

@@ -10,7 +10,7 @@ import { SHIP_VARIANTS } from '../three/ship/shipRegistry.js';
  *  - 底部全息控制台：可点击收起/展开；内含 飞行模式 / 导航目标 / 视角切换 / 速度条
  *  - 顶部状态条：速度 / 目标 / 锁定状态 / 模式
  */
-export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onToggleConsole, onCancelNav, onExit, onStick, onStickRoll, onStickThrottle, onOrbit, planets, onEnterInspect, onExitInspect, onInspectMode, onInspectExplode }) {
+export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onToggleConsole, onCancelNav, onExit, onStick, onStickRoll, onStickThrottle, onOrbit, planets, onEnterInspect }) {
   const [navOpen, setNavOpen] = useState(false);
   const hudRef = useRef(hud);
   useEffect(() => { hudRef.current = hud; }, [hud]);
@@ -132,11 +132,9 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
       <button className="cockpit-exit" onClick={onExit} title="退出飞船模式 (Esc)">✕ 退出飞船</button>
 
       {/* 星舰机库入口（选型 + 爆炸拆解 + 舱内漫游均在机库进行） */}
-      {!hud.inspect && (
-        <button className="cockpit-inspect-btn" onClick={onEnterInspect} title="进入星舰机库 · 选型 · 爆炸拆解 · 舱内漫游">
-          ⬡ 星舰机库
-        </button>
-      )}
+      <button className="cockpit-inspect-btn" onClick={onEnterInspect} title="进入星舰机库 · 选型 · 爆炸拆解 · 舱内漫游">
+        ⬡ 星舰机库
+      </button>
 
       {/* 左下虚拟摇杆：拖动控制转向/俯仰（鼠标+触屏） */}
       <div
