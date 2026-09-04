@@ -131,42 +131,11 @@ export function CockpitHud({ hud, onModeChange, onNavSelect, onToggleCamera, onT
       {/* 退出飞船模式 */}
       <button className="cockpit-exit" onClick={onExit} title="退出飞船模式 (Esc)">✕ 退出飞船</button>
 
-      {/* 飞船细节检视入口 */}
+      {/* 星舰机库入口（选型 + 爆炸拆解 + 舱内漫游均在机库进行） */}
       {!hud.inspect && (
-        <button className="cockpit-inspect-btn" onClick={onEnterInspect} title="拆解飞船 · 爆炸图 · 舱内漫游">
-          ⬡ 细节检视
+        <button className="cockpit-inspect-btn" onClick={onEnterInspect} title="进入星舰机库 · 选型 · 爆炸拆解 · 舱内漫游">
+          ⬡ 星舰机库
         </button>
-      )}
-
-      {/* 检视模式控制台 */}
-      {hud.inspect && (
-        <div className="insp-panel">
-          <div className="insp-head">
-            <span className="insp-title">⬡ {(SHIP_VARIANTS.find(v => v.id === hud.shipId) || SHIP_VARIANTS[0]).name} · 结构检视</span>
-            <span className="insp-count">{hud.partCount} 部件</span>
-          </div>
-          <div className="insp-modes">
-            <button className={'insp-mode' + (hud.inspectMode === 'assembled' ? ' active' : '')} onClick={() => onInspectMode('assembled')}>组合 360°</button>
-            <button className={'insp-mode' + (hud.inspectMode === 'exploded' ? ' active' : '')} onClick={() => onInspectMode('exploded')}>爆炸拆解</button>
-            <button className={'insp-mode' + (hud.inspectMode === 'interior' ? ' active' : '')} onClick={() => onInspectMode('interior')}>舱内漫游</button>
-          </div>
-          {hud.inspectMode === 'exploded' && (
-            <div className="insp-slider-row">
-              <span className="insp-slider-label">拆解度</span>
-              <input
-                type="range" min="0" max="100" value={hud.explode}
-                onChange={(e) => onInspectExplode(parseFloat(e.target.value) / 100)}
-              />
-              <span className="insp-slider-val">{hud.explode}%</span>
-            </div>
-          )}
-          <div className="insp-hint">
-            {hud.inspectMode === 'interior'
-              ? '拖拽环视 · W/A/S/D 舱内移动'
-              : '拖拽旋转 · 滚轮缩放 · 悬停部件查看名称'}
-          </div>
-          <button className="insp-exit" onClick={onExitInspect}>✕ 退出检视 (X)</button>
-        </div>
       )}
 
       {/* 左下虚拟摇杆：拖动控制转向/俯仰（鼠标+触屏） */}

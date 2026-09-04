@@ -351,9 +351,8 @@ export default function App() {
   const handleEnterInspect = useCallback(() => setGarageOpen(true), []);
   const handleGarageConfirm = useCallback((shipId) => {
     setGarageOpen(false);
+    // 换船后直接以新座舰回到太空飞行
     sceneRef.current?.shipSwap(shipId);
-    // 切换后立即进入结构检视
-    setTimeout(() => sceneRef.current?.shipEnterInspect(), 220);
   }, []);
   const handleGarageExit = useCallback(() => setGarageOpen(false), []);
   const handleExitInspect = useCallback(() => {

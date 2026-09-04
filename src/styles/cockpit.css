@@ -679,229 +679,324 @@
 }
 
 
-/* ============ 星舰机库（独立选型空间） ============ */
-.garage-overlay {
+
+/* ============ 星舰机库 · 简约白色超科幻展厅 ============ */
+.garage-overlay.garage-light {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: radial-gradient(ellipse at 50% 110%, rgba(50, 34, 10, 0.35) 0%, rgba(5, 7, 15, 0.92) 55%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: #eef2f7;
   animation: garageFade 0.5s ease;
 }
 @keyframes garageFade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.garage-canvas-container {
+.garage-light .garage-canvas-container {
   position: absolute;
   inset: 0;
 }
-.garage-canvas-container canvas {
+.garage-light .garage-canvas-container canvas {
   display: block;
 }
 
 /* 顶部标题 */
-.garage-header {
+.garage-light .garage-header {
   position: absolute;
-  top: 34px;
+  top: 30px;
   left: 0;
   right: 0;
   text-align: center;
   pointer-events: none;
   z-index: 10;
 }
-.garage-kicker {
-  font-size: 0.72rem;
-  letter-spacing: 0.5em;
-  color: rgba(255, 196, 107, 0.75);
+.garage-light .garage-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em;
+  color: #7c93b0;
   margin-bottom: 8px;
 }
-.garage-title {
+.garage-light .garage-title {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.9rem;
   font-weight: 800;
   letter-spacing: 0.35em;
   text-indent: 0.35em;
-  background: linear-gradient(135deg, #fff8ec 0%, #ffd9a0 55%, #ff9d5c 100%);
+  background: linear-gradient(120deg, #1b2a41 0%, #35c8ff 55%, #1b2a41 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 40px rgba(255, 170, 90, 0.25);
 }
 
-/* 左右切换箭头 */
-.garage-arrow {
+/* 左侧检视模式页签 */
+.garage-light .garage-modes {
   position: absolute;
+  left: 24px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  font-size: 1.6rem;
-  line-height: 1;
-  color: #ffd9a0;
-  background: rgba(12, 12, 20, 0.55);
-  border: 1px solid rgba(255, 180, 84, 0.4);
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-.garage-arrow:hover {
-  background: rgba(255, 180, 84, 0.2);
-  box-shadow: 0 0 22px rgba(255, 180, 84, 0.35);
-  transform: translateY(-50%) scale(1.06);
-}
-.garage-arrow.left { left: 26px; }
-.garage-arrow.right { right: 26px; }
-
-/* 底部信息坞 */
-.garage-dock {
-  position: absolute;
-  left: 50%;
-  bottom: 26px;
-  transform: translateX(-50%);
-  z-index: 10;
-  width: min(880px, calc(100vw - 40px));
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  align-items: center;
+  gap: 8px;
+  width: 190px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(150, 175, 205, 0.35);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 40px rgba(35, 60, 95, 0.12);
 }
-.garage-info {
-  text-align: center;
-  max-width: 640px;
-  pointer-events: none;
-}
-.garage-ship-name {
-  font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  text-shadow: 0 0 24px currentColor;
-}
-.garage-ship-en {
-  margin-left: 10px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.25em;
-  opacity: 0.65;
-}
-.garage-ship-role {
-  margin-top: 2px;
-  font-size: 0.78rem;
-  letter-spacing: 0.3em;
-  color: rgba(242, 231, 213, 0.6);
-}
-.garage-ship-desc {
-  margin: 8px auto 0;
-  font-size: 0.78rem;
-  line-height: 1.75;
-  color: rgba(242, 231, 213, 0.72);
-}
-
-/* 机型卡片 */
-.garage-cards {
-  display: flex;
-  gap: 10px;
-}
-.garage-card {
+.garage-light .garage-mode {
   appearance: none;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 10px 18px;
-  min-width: 110px;
-  background: rgba(10, 10, 16, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #44566e;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.garage-card:hover { transform: translateY(-3px); }
-.garage-card.active {
-  border-color: var(--ship-color);
-  background: rgba(20, 16, 10, 0.75);
-  box-shadow: 0 0 18px rgba(255, 170, 90, 0.25), inset 0 0 12px rgba(255, 170, 90, 0.08);
+.garage-light .garage-mode:hover { background: rgba(53, 200, 255, 0.08); }
+.garage-light .garage-mode.active {
+  color: #0b6f9e;
+  background: rgba(53, 200, 255, 0.14);
+  border-color: rgba(53, 200, 255, 0.5);
 }
-.garage-card-dot {
-  width: 8px;
-  height: 8px;
+.garage-light .garage-mode-ico { font-size: 0.95rem; }
+.garage-light .garage-explode-ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid rgba(150, 175, 205, 0.3);
+  animation: inspFade 0.25s ease;
+}
+.garage-light .garage-explode-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #44566e;
+  font-variant-numeric: tabular-nums;
+}
+.garage-light .garage-explode-ctl input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(68, 86, 110, 0.25);
+  outline: none;
+  cursor: pointer;
+}
+.garage-light .garage-explode-ctl input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #35c8ff;
+  border: 2px solid #fff;
+  box-shadow: 0 0 10px rgba(53, 200, 255, 0.8);
+}
+.garage-light .garage-part-count {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  color: #8aa0bd;
+  font-variant-numeric: tabular-nums;
+}
+.garage-light .garage-mode-hint {
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  color: #8aa0bd;
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* 右侧舰队列 */
+.garage-light .garage-fleet {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 200px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(150, 175, 205, 0.35);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 40px rgba(35, 60, 95, 0.12);
+}
+.garage-light .garage-fleet-title {
+  font-size: 0.66rem;
+  letter-spacing: 0.3em;
+  color: #7c93b0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(150, 175, 205, 0.3);
+}
+.garage-light .garage-fleet-item {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.garage-light .garage-fleet-item:hover { background: rgba(53, 200, 255, 0.07); }
+.garage-light .garage-fleet-item.active {
+  background: rgba(53, 200, 255, 0.13);
+  border-color: rgba(53, 200, 255, 0.5);
+}
+.garage-light .garage-fleet-dot {
+  grid-row: 1 / span 2;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   box-shadow: 0 0 8px currentColor;
 }
-.garage-card-name {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #f2e7d5;
-  letter-spacing: 0.1em;
-}
-.garage-card-en {
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  color: rgba(242, 231, 213, 0.45);
-}
-
-/* 底部操作按钮 */
-.garage-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.garage-confirm {
-  appearance: none;
-  padding: 0.75rem 1.8rem;
-  font-size: 0.95rem;
+.garage-light .garage-fleet-name {
+  font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #2a1608;
-  background: linear-gradient(135deg, #ffd9a0 0%, #ff9d5c 100%);
+  color: #22334a;
+}
+.garage-light .garage-fleet-en {
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  color: #8aa0bd;
+}
+
+/* 底部坞 */
+.garage-light .garage-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: min(720px, calc(100vw - 480px));
+  min-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 26px 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(150, 175, 205, 0.35);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 40px rgba(35, 60, 95, 0.12);
+}
+.garage-light .garage-info { text-align: center; pointer-events: none; }
+.garage-light .garage-ship-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+}
+.garage-light .garage-ship-en {
+  margin-left: 10px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.25em;
+  opacity: 0.6;
+}
+.garage-light .garage-ship-role {
+  margin-top: 2px;
+  font-size: 0.74rem;
+  letter-spacing: 0.3em;
+  color: #7c93b0;
+}
+.garage-light .garage-ship-desc {
+  margin: 6px auto 0;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  color: #5a6d88;
+}
+.garage-light .garage-actions { display: flex; gap: 12px; align-items: center; }
+.garage-light .garage-confirm {
+  appearance: none;
+  padding: 0.72rem 1.9rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #fff;
+  background: linear-gradient(120deg, #21a8e0 0%, #35c8ff 100%);
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 0 26px rgba(255, 170, 90, 0.4);
+  box-shadow: 0 6px 22px rgba(43, 168, 224, 0.4);
   transition: box-shadow 0.15s, transform 0.15s;
 }
-.garage-confirm:hover {
-  box-shadow: 0 0 36px rgba(255, 170, 90, 0.65);
+.garage-light .garage-confirm:hover {
+  box-shadow: 0 8px 30px rgba(43, 168, 224, 0.6);
   transform: translateY(-2px);
 }
-.garage-back {
+.garage-light .garage-back {
   appearance: none;
-  padding: 0.72rem 1.3rem;
-  font-size: 0.85rem;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.82rem;
   letter-spacing: 0.1em;
-  color: rgba(242, 231, 213, 0.8);
-  background: rgba(12, 12, 20, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #44566e;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(120, 145, 175, 0.45);
   border-radius: 12px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: background 0.15s;
 }
-.garage-back:hover { background: rgba(255, 255, 255, 0.12); }
+.garage-light .garage-back:hover { background: #fff; }
 
-.garage-loading {
+/* 悬停部件标签 + 引导线（白底青字） */
+.garage-light .garage-label {
+  position: absolute;
+  z-index: 40;
+  padding: 4px 11px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #0b6f9e;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(53, 200, 255, 0.65);
+  border-radius: 7px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(35, 60, 95, 0.16);
+}
+.garage-light .garage-svg {
   position: absolute;
   inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  letter-spacing: 0.3em;
-  color: rgba(255, 196, 107, 0.8);
-  background: rgba(5, 7, 15, 0.6);
+  width: 100%;
+  height: 100%;
+  z-index: 39;
+  pointer-events: none;
+}
+.garage-light .garage-lead {
+  stroke: rgba(43, 168, 224, 0.8);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 3;
 }
 
-@media (max-width: 720px) {
-  .garage-title { font-size: 1.3rem; }
-  .garage-cards { flex-wrap: wrap; justify-content: center; }
-  .garage-card { padding: 8px 12px; min-width: 88px; }
+@media (max-width: 960px) {
+  .garage-light .garage-modes { width: 150px; left: 12px; padding: 10px; }
+  .garage-light .garage-fleet { width: 150px; right: 12px; padding: 10px; }
+  .garage-light .garage-dock { width: calc(100vw - 340px); min-width: 0; }
+  .garage-light .garage-title { font-size: 1.4rem; }
 }
