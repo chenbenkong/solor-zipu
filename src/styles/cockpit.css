@@ -46,6 +46,36 @@
   box-shadow: 0 0 16px rgba(255, 180, 84, 0.3);
 }
 
+/* ---------- 星舰机库入口按钮（右上角） ---------- */
+.cockpit-inspect-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 46;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.62rem 1.25rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--fui-cyan);
+  background: linear-gradient(160deg, rgba(10, 22, 34, 0.78), rgba(8, 10, 20, 0.66));
+  border: 1px solid rgba(87, 230, 255, 0.45);
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 0 18px rgba(87, 230, 255, 0.18), inset 0 0 12px rgba(87, 230, 255, 0.06);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.cockpit-inspect-btn:hover {
+  background: rgba(87, 230, 255, 0.16);
+  box-shadow: 0 0 26px rgba(87, 230, 255, 0.4), inset 0 0 16px rgba(87, 230, 255, 0.1);
+  transform: translateY(-1px);
+}
+.cockpit-inspect-btn:active { transform: translateY(0); }
+
 /* ---------- 巨型舷窗相框（第一视角） ---------- */
 .viewport-frame { position: absolute; inset: 0; pointer-events: none; }
 .cockpit-hud[data-cameramode='chase'] .viewport-frame { display: none; }
