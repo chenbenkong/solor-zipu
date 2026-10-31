@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 
+const COMPACT = window.matchMedia?.('(max-width: 768px)').matches;
+
 // 火星与木星之间的小行星带：用 InstancedMesh 一次性绘制大量细小岩石，性能友好
-export function createAsteroidBelt(innerRadius = 1000, outerRadius = 1400, count = 8000) {
+export function createAsteroidBelt(innerRadius = 1000, outerRadius = 1400, count = COMPACT ? 600 : 1300) {
   const group = new THREE.Group();
 
-  const { albedo, normal } = buildRockTextures(1024);
+  const { albedo, normal } = buildRockTextures(COMPACT ? 192 : 320);
 
   const geometry = new THREE.IcosahedronGeometry(1, 2);
   const material = new THREE.MeshStandardMaterial({
@@ -15,23 +17,6 @@ export function createAsteroidBelt(innerRadius = 1000, outerRadius = 1400, count
     metalness: 0.04,
     flatShading: true
   });
-
-  // 若用户放入真实岩石照片 textures/rock.jpg，则自动升级（当前下载失败则保留程序化）
-  new THREE.TextureLoader().load(
-    import.meta.env.BASE_URL + 'textures/rock.jpg',
-    (tex) => {
-      if (tex.image) {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 8;
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        material.map = tex;
-        material.normalMap = buildNormalFromImage(tex.image, 1024);
-        material.needsUpdate = true;
-      }
-    },
-    undefined,
-    () => { /* 无真实贴图，保持程序化岩石 */ }
-  );
 
   const mesh = new THREE.InstancedMesh(geometry, material, count);
   const dummy = new THREE.Object3D();
@@ -191,10 +176,10 @@ function makeValueNoise(size) {
 }
 
 // 柯伊伯带：海王星轨道外的冰冻天体带，用 InstancedMesh 3D岩石（非平面贴图）
-export function createKuiperBelt(innerRadius = 6500, outerRadius = 7500, count = 3000) {
+export function createKuiperBelt(innerRadius = 6500, outerRadius = 7500, count = COMPACT ? 260 : 700) {
   const group = new THREE.Group();
 
-  const { albedo, normal } = buildKuiperTextures(1024);
+  const { albedo, normal } = buildKuiperTextures(COMPACT ? 128 : 224);
 
   const geometry = new THREE.IcosahedronGeometry(1, 2);
   const material = new THREE.MeshStandardMaterial({

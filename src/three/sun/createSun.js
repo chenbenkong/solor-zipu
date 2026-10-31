@@ -10,7 +10,7 @@ export function createSun(manager) {
 
   // 真实太阳贴图（CC BY 4.0 Solar System Scope）
   const textureLoader = new THREE.TextureLoader(manager);
-  const sunTexture = textureLoader.load(import.meta.env.BASE_URL + 'textures/sun.jpg');
+  const sunTexture = textureLoader.load(import.meta.env.BASE_URL + 'textures/sun.webp');
   sunTexture.colorSpace = THREE.SRGBColorSpace;
   sunTexture.anisotropy = 8;
 

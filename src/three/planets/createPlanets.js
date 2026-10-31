@@ -13,29 +13,29 @@ export function createPlanets(solarSystem, manager) {
   planetData.forEach(planet => {
     const orbitalElements = ORBITAL_ELEMENTS[planet.name];
     const renderDistance = orbitalElements?.renderDistance ?? planet.distance;
-    const segments = IS_COMPACT ? 48 : 80;
+    const segments = IS_COMPACT ? 40 : 64;
     const geometry = new THREE.SphereGeometry(planet.radius, segments, segments);
 
     let material;
 
     if (planet.name === '木星') {
-      material = createGasGiantMaterial(manager, 'textures/jupiter.jpg', 0x3a2a1a, 0.10);
+      material = createGasGiantMaterial(manager, 'textures/jupiter.webp', 0x3a2a1a, 0.10);
     } else if (planet.name === '土星') {
-      material = createGasGiantMaterial(manager, 'textures/saturn.jpg', 0x4a3a20, 0.10);
+      material = createGasGiantMaterial(manager, 'textures/saturn.webp', 0x4a3a20, 0.10);
     } else if (planet.name === '地球') {
       material = createEarthMaterial(manager);
     } else if (planet.name === '火星') {
-      material = createSimplePlanetMaterial(manager, 'textures/mars.jpg', 0x301005, 0.05, true);
+      material = createSimplePlanetMaterial(manager, 'textures/mars.webp', 0x301005, 0.05, true);
     } else if (planet.name === '金星') {
-      material = createSimplePlanetMaterial(manager, 'textures/venus_atmosphere.jpg', 0x2a1a08, 0.12, true);
+      material = createSimplePlanetMaterial(manager, 'textures/venus_atmosphere.webp', 0x2a1a08, 0.12, true);
     } else if (planet.name === '水星') {
-      material = createSimplePlanetMaterial(manager, 'textures/mercury.jpg', 0x222018, 0.06, true);
+      material = createSimplePlanetMaterial(manager, 'textures/mercury.webp', 0x222018, 0.06, true);
     } else if (planet.name === '天王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/uranus.jpg', 0x0a2a3a, 0.08, true);
+      material = createSimplePlanetMaterial(manager, 'textures/uranus.webp', 0x0a2a3a, 0.08, true);
     } else if (planet.name === '海王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/neptune.jpg', 0x081830, 0.08, true);
+      material = createSimplePlanetMaterial(manager, 'textures/neptune.webp', 0x081830, 0.08, true);
     } else if (planet.name === '冥王星') {
-      material = createSimplePlanetMaterial(manager, 'textures/pluto.jpg', 0x1a120a, 0.06, true);
+      material = createSimplePlanetMaterial(manager, 'textures/pluto.webp', 0x1a120a, 0.06, true);
     } else {
       material = new THREE.MeshPhongMaterial({
         color: planet.color,
@@ -126,49 +126,9 @@ function loadTex(manager, path) {
   return t;
 }
 
-// 由颜色贴图实时生成法线贴图（Sobel），让地表产生浮雕
-function makeNormalFromImage(image, size) {
-  const cw = size;
-  const ch = Math.round((image.height / image.width) * size);
-  const src = document.createElement('canvas');
-  src.width = cw; src.height = ch;
-  const sctx = src.getContext('2d');
-  sctx.drawImage(image, 0, 0, cw, ch);
-  const data = sctx.getImageData(0, 0, cw, ch).data;
-  const out = document.createElement('canvas');
-  out.width = cw; out.height = ch;
-  const octx = out.getContext('2d');
-  const odata = octx.createImageData(cw, ch);
-  const lum = (x, y) => {
-    const xi = (x + cw) % cw, yi = (y + ch) % ch;
-    const i = (yi * cw + xi) * 4;
-    return (data[i] + data[i + 1] + data[i + 2]) / 3;
-  };
-  const strength = 2.0;
-  for (let y = 0; y < ch; y++) {
-    for (let x = 0; x < cw; x++) {
-      const dx = lum(x + 1, y) - lum(x - 1, y);
-      const dy = lum(x, y + 1) - lum(x, y - 1);
-      let nx = -dx * strength, ny = -dy * strength, nz = 255;
-      const len = Math.hypot(nx, ny, nz);
-      nx /= len; ny /= len; nz /= len;
-      const i = (y * cw + x) * 4;
-      odata.data[i] = (nx * 0.5 + 0.5) * 255;
-      odata.data[i + 1] = (ny * 0.5 + 0.5) * 255;
-      odata.data[i + 2] = (nz * 0.5 + 0.5) * 255;
-      odata.data[i + 3] = 255;
-    }
-  }
-  octx.putImageData(odata, 0, 0);
-  const tex = new THREE.CanvasTexture(out);
-  tex.colorSpace = THREE.NoColorSpace;
-  tex.anisotropy = 16;
-  return tex;
-}
-
 // Fresnel 边缘大气辉光
 function createAtmosphere(radius, color) {
-  const geometry = new THREE.SphereGeometry(radius * 1.04, 64, 64);
+  const geometry = new THREE.SphereGeometry(radius * 1.04, IS_COMPACT ? 24 : 36, IS_COMPACT ? 24 : 36);
   const material = new THREE.ShaderMaterial({
     uniforms: {
       glowColor: { value: new THREE.Color(color) },
@@ -202,7 +162,7 @@ function createAtmosphere(radius, color) {
 
 // 地球大气散射：Rayleigh 散射 + Beer-Lambert 消光 + 晨昏线红化
 function createEarthAtmosphere(radius) {
-  const geometry = new THREE.SphereGeometry(radius * 1.06, 64, 64);
+  const geometry = new THREE.SphereGeometry(radius * 1.06, IS_COMPACT ? 28 : 40, IS_COMPACT ? 28 : 40);
   const material = new THREE.ShaderMaterial({
     uniforms: {
       sunDirection: { value: new THREE.Vector3(1, 0, 0) }
@@ -290,12 +250,12 @@ function createOrbitLine(planet, elements, renderDistance) {
 
 // 地球：昼夜着色器 + 地形法线
 function createEarthMaterial(manager) {
-  const dayMap = loadTex(manager, 'textures/earth.jpg');
-  const nightMap = loadTex(manager, 'textures/earth_night.jpg');
-  const specMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_specular.jpg');
+  const dayMap = loadTex(manager, 'textures/earth.webp');
+  const nightMap = loadTex(manager, 'textures/earth_night.webp');
+  const specMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_specular.webp');
   specMap.colorSpace = THREE.NoColorSpace;
   specMap.anisotropy = 16;
-  const normalMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_normal.jpg');
+  const normalMap = new THREE.TextureLoader(manager).load(BASE + 'textures/earth_normal.webp');
   normalMap.colorSpace = THREE.NoColorSpace;
   normalMap.anisotropy = 16;
 
@@ -377,8 +337,8 @@ function createEarthMaterial(manager) {
 }
 
 function createClouds(radius, manager) {
-  const cloudTex = loadTex(manager, 'textures/earth_clouds.png');
-  const geo = new THREE.SphereGeometry(radius * 1.012, 64, 64);
+  const cloudTex = loadTex(manager, 'textures/earth_clouds.webp');
+  const geo = new THREE.SphereGeometry(radius * 1.012, IS_COMPACT ? 32 : 48, IS_COMPACT ? 32 : 48);
   const mat = new THREE.MeshPhongMaterial({
     map: cloudTex,
     alphaMap: cloudTex,
@@ -400,20 +360,14 @@ function createGasGiantMaterial(manager, path, emissive, intensity) {
   const loader = new THREE.TextureLoader(manager);
   loader.load(BASE + path, (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 16;
+    tex.anisotropy = 8;
     mat.map = tex;
-    // 云带法线：从亮度图生成，条带起伏立体
-    if (tex.image) {
-      const n = makeNormalFromImage(tex.image, IS_COMPACT ? 384 : 768);
-      mat.normalMap = n;
-      mat.normalScale = new THREE.Vector2(0.55, 0.55);
-    }
     mat.needsUpdate = true;
   });
   return mat;
 }
 
-function createSimplePlanetMaterial(manager, path, emissive, intensity, withNormal) {
+function createSimplePlanetMaterial(manager, path, emissive, intensity) {
   const mat = new THREE.MeshStandardMaterial({
     roughness: 0.95,
     metalness: 0.0,
@@ -423,13 +377,8 @@ function createSimplePlanetMaterial(manager, path, emissive, intensity, withNorm
   const loader = new THREE.TextureLoader(manager);
   loader.load(BASE + path, (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 16;
+    tex.anisotropy = 8;
     mat.map = tex;
-    if (withNormal && tex.image) {
-      const n = makeNormalFromImage(tex.image, IS_COMPACT ? 384 : 768);
-      mat.normalMap = n;
-      mat.normalScale = new THREE.Vector2(1.1, 1.1);
-    }
     mat.needsUpdate = true;
   });
   return mat;

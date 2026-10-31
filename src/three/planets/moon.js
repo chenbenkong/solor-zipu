@@ -30,17 +30,18 @@ export function createMoon(planetRadius, manager, config = {}) {
   const moonRadius = planetRadius * radiusRatio;
   const orbitDistance = planetRadius * distanceRatio;
 
-  const moonGeometry = new THREE.SphereGeometry(moonRadius, 96, 64);
+  const compact = window.matchMedia?.('(max-width: 768px)').matches;
+  const moonGeometry = new THREE.SphereGeometry(moonRadius, compact ? 24 : 36, compact ? 18 : 28);
 
   // Determine texture source: procedural or file-based
   const texGenerator = MOON_TEXTURE_GENERATORS[name];
   let moonMaterial;
 
   if (texGenerator) {
-    // Procedural texture: generate synchronously on canvas
-    const proceduralTex = texGenerator(1024);
+    // 卫星在首屏只有几个像素，低分辨率纹理足够；近景时仍由光照与地貌色块保持可辨识度。
+    const proceduralTex = texGenerator(compact ? 96 : 128);
     proceduralTex.colorSpace = THREE.SRGBColorSpace;
-    proceduralTex.anisotropy = 16;
+    proceduralTex.anisotropy = 4;
 
     moonMaterial = new THREE.MeshPhongMaterial({
       map: proceduralTex,
@@ -49,19 +50,11 @@ export function createMoon(planetRadius, manager, config = {}) {
       emissiveIntensity,
       specular: 0x333333
     });
-
-    // Generate procedural normal map from the texture
-    const normalTex = buildNormalMapFromTexture(proceduralTex, 1024);
-    if (normalTex) {
-      moonMaterial.normalMap = normalTex;
-      moonMaterial.normalScale = new THREE.Vector2(1.2, 1.2);
-    }
   } else {
-    // File-based texture (Moon uses moon.jpg)
     const textureLoader = new THREE.TextureLoader(manager);
-    const moonTexture = textureLoader.load(BASE + 'textures/moon_hd.jpg');
+    const moonTexture = textureLoader.load(BASE + 'textures/moon.webp');
     moonTexture.colorSpace = THREE.SRGBColorSpace;
-    moonTexture.anisotropy = 16;
+    moonTexture.anisotropy = 4;
 
     moonMaterial = new THREE.MeshPhongMaterial({
       map: moonTexture,
@@ -70,18 +63,6 @@ export function createMoon(planetRadius, manager, config = {}) {
       emissiveIntensity,
       specular: 0x333333
     });
-
-    // Async normal map from moon.jpg
-    const img = new Image();
-    img.onload = () => {
-      const normalTex = buildNormalMap(img, 1024);
-      normalTex.colorSpace = THREE.NoColorSpace;
-      normalTex.anisotropy = 16;
-      moonMaterial.normalMap = normalTex;
-      moonMaterial.normalScale = new THREE.Vector2(1.4, 1.4);
-      moonMaterial.needsUpdate = true;
-    };
-    img.src = BASE + 'textures/moon_hd.jpg';
   }
 
   const moon = new THREE.Mesh(moonGeometry, moonMaterial);
@@ -108,60 +89,4 @@ export function createMoon(planetRadius, manager, config = {}) {
     moonOrbit,
     moonConfig: { name, orbitSpeed, rotationSpeed, orbitDistance }
   };
-}
-
-// Build normal map from a Three.js CanvasTexture (synchronous)
-function buildNormalMapFromTexture(texture, size) {
-  if (!texture.image) return null;
-  const img = texture.image;
-  return buildNormalMap(img, size);
-}
-
-// Build normal map from any image (grayscale height → Sobel normal)
-function buildNormalMap(img, size) {
-  const cw = size;
-  const ch = Math.round((img.height / img.width) * size);
-
-  const src = document.createElement('canvas');
-  src.width = cw;
-  src.height = ch;
-  const sctx = src.getContext('2d');
-  sctx.drawImage(img, 0, 0, cw, ch);
-  const data = sctx.getImageData(0, 0, cw, ch).data;
-
-  const out = document.createElement('canvas');
-  out.width = cw;
-  out.height = ch;
-  const octx = out.getContext('2d');
-  const odata = octx.createImageData(cw, ch);
-
-  const lum = (x, y) => {
-    const xi = (x + cw) % cw;
-    const yi = (y + ch) % ch;
-    const i = (yi * cw + xi) * 4;
-    return (data[i] + data[i + 1] + data[i + 2]) / 3;
-  };
-
-  const strength = 2.2;
-  for (let y = 0; y < ch; y++) {
-    for (let x = 0; x < cw; x++) {
-      const dx = lum(x + 1, y) - lum(x - 1, y);
-      const dy = lum(x, y + 1) - lum(x, y - 1);
-      let nx = -dx * strength;
-      let ny = -dy * strength;
-      let nz = 255;
-      const len = Math.hypot(nx, ny, nz);
-      nx /= len; ny /= len; nz /= len;
-      const i = (y * cw + x) * 4;
-      odata.data[i] = (nx * 0.5 + 0.5) * 255;
-      odata.data[i + 1] = (ny * 0.5 + 0.5) * 255;
-      odata.data[i + 2] = (nz * 0.5 + 0.5) * 255;
-      odata.data[i + 3] = 255;
-    }
-  }
-  octx.putImageData(odata, 0, 0);
-  const tex = new THREE.CanvasTexture(out);
-  tex.colorSpace = THREE.NoColorSpace;
-  tex.anisotropy = 16;
-  return tex;
 }

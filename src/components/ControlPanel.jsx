@@ -20,6 +20,7 @@ export const ControlPanel = React.memo(function ControlPanel({
   showLensFlare,
   globalScale,
   isMusicPlaying,
+  shipLoading,
   onTogglePause,
   onSpeedChange,
   onZoomChange,
@@ -143,9 +144,9 @@ export const ControlPanel = React.memo(function ControlPanel({
         <button className="text-control blackhole-control" onClick={onBlackHole} title="进入 Gargantua 黑洞">
           <Icon name="blackhole" size={17} /> <span className="action-label">黑洞</span>
         </button>
-        <button className="ship-launch" onClick={onEnterShip} title="登上星舰">
+        <button className="ship-launch" onClick={onEnterShip} title="登上星舰" disabled={shipLoading} aria-busy={shipLoading}>
           <Icon name="rocket" size={17} />
-          <span className="action-label">星舰出航</span>
+          <span className="action-label">{shipLoading ? '准备中' : '星舰出航'}</span>
           <Icon name="arrow" size={15} className="launch-arrow" />
         </button>
       </div>

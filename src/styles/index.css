@@ -2425,6 +2425,31 @@ kbd {
 /* ═══════════════════════════════════════════════════════════════
    SOLARIS v6 · 天文星历、观测信息与移动端精修
    ═══════════════════════════════════════════════════════════════ */
+.scene-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 900ms ease;
+}
+
+.scene-poster.is-hidden {
+  opacity: 0;
+}
+
+.canvas-container {
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.canvas-container.is-ready {
+  opacity: 1;
+}
+
 .canvas-container canvas {
   cursor: grab;
   touch-action: none;
@@ -2594,6 +2619,10 @@ kbd {
 }
 
 @media (max-width: 860px) {
+  .scene-intro {
+    top: 144px;
+  }
+
   .scene-intro h1 {
     font-size: clamp(1.9rem, 8vw, 2.65rem);
   }
@@ -2635,5 +2664,47 @@ kbd {
 
   .time-presets {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 标签平滑跟随，并在 UI 边缘由组件层主动避让 */
+.planet-label {
+  transition: left 160ms linear, top 160ms linear, opacity 160ms ease;
+  will-change: left, top;
+}
+
+.quick-nav {
+  bottom: 98px;
+}
+
+.quick-nav-track {
+  background: rgba(6, 8, 14, 0.88);
+}
+
+.ship-launch:disabled,
+.mode-tab:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.ship-launch:disabled .launch-arrow {
+  opacity: 0.35;
+}
+
+@media (max-width: 860px) {
+  .navigation-btn {
+    top: 88px;
+  }
+
+  .navigation-panel {
+    top: 140px;
+  }
+
+  .quick-nav {
+    bottom: 86px;
+  }
+
+  .planet-label {
+    display: none;
   }
 }

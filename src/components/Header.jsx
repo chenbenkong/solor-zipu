@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 
-export const Header = React.memo(function Header({ speedLevel, simulationDate, isPaused, onEnterShip, onBlackHole, onGuide }) {
+export const Header = React.memo(function Header({ speedLevel, simulationDate, isPaused, shipLoading, onEnterShip, onBlackHole, onGuide }) {
   return (
     <header className="app-header">
       <a className="brand" href="./" aria-label="SOLARIS 太阳系首页">
@@ -16,8 +16,8 @@ export const Header = React.memo(function Header({ speedLevel, simulationDate, i
         <button className="mode-tab active" aria-current="page">
           <Icon name="orbit" size={15} /> 观测
         </button>
-        <button className="mode-tab" onClick={onEnterShip}>
-          <Icon name="rocket" size={15} /> 星舰
+        <button className="mode-tab" onClick={onEnterShip} disabled={shipLoading} aria-busy={shipLoading}>
+          <Icon name="rocket" size={15} /> {shipLoading ? '准备中' : '星舰'}
         </button>
         <button className="mode-tab" onClick={onBlackHole}>
           <Icon name="blackhole" size={15} /> 黑洞

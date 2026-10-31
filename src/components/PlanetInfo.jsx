@@ -2,17 +2,17 @@ import React from 'react';
 import { Icon } from './Icon';
 
 const THUMB_MAP = {
-  '太阳': 'textures/sun.jpg',
-  '月球': 'textures/moon.jpg',
-  '水星': 'textures/mercury.jpg',
-  '金星': 'textures/venus_atmosphere.jpg',
-  '地球': 'textures/earth.jpg',
-  '火星': 'textures/mars.jpg',
-  '木星': 'textures/jupiter.jpg',
-  '土星': 'textures/saturn.jpg',
-  '天王星': 'textures/uranus.jpg',
-  '海王星': 'textures/neptune.jpg',
-  '冥王星': 'textures/pluto.jpg'
+  '太阳': 'textures/thumbs/sun.webp',
+  '月球': 'textures/thumbs/moon.webp',
+  '水星': 'textures/thumbs/mercury.webp',
+  '金星': 'textures/thumbs/venus_atmosphere.webp',
+  '地球': 'textures/thumbs/earth.webp',
+  '火星': 'textures/thumbs/mars.webp',
+  '木星': 'textures/thumbs/jupiter.webp',
+  '土星': 'textures/thumbs/saturn.webp',
+  '天王星': 'textures/thumbs/uranus.webp',
+  '海王星': 'textures/thumbs/neptune.webp',
+  '冥王星': 'textures/thumbs/pluto.webp'
 };
 
 const ENGLISH_NAMES = {

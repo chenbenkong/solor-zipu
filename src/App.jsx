@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, Component } from 'react';
+import React, { useEffect, useRef, useState, useCallback, lazy, Suspense, Component } from 'react';
 import { SolarSystemScene } from './three/SolarSystemScene';
 import { ControlPanel } from './components/ControlPanel';
 import { PlanetInfo } from './components/PlanetInfo';
@@ -6,8 +6,6 @@ import { NavigationPanel } from './components/NavigationPanel';
 import { PlanetLabels } from './components/PlanetLabels';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
-import { BlackHoleOverlay } from './components/BlackHoleOverlay';
-import { ShipGarageOverlay } from './components/ShipGarageOverlay';
 import { CockpitHud } from './components/CockpitHud';
 import { PlanetQuickNav } from './components/PlanetQuickNav';
 import { GuideModal } from './components/GuideModal';
@@ -15,6 +13,10 @@ import { Icon } from './components/Icon';
 import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/planetData';
 import './styles/index.css';
 import './styles/cockpit.css';
+
+// 星舰机库与黑洞属于低频入口，按需加载，避免阻塞首屏。
+const BlackHoleOverlay = lazy(() => import('./components/BlackHoleOverlay').then(module => ({ default: module.BlackHoleOverlay })));
+const ShipGarageOverlay = lazy(() => import('./components/ShipGarageOverlay').then(module => ({ default: module.ShipGarageOverlay })));
 
 function formatSimulationDate(date) {
   if (!date) return '';
@@ -107,6 +109,7 @@ export default function App() {
   const [planetPositions, setPlanetPositions] = useState(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [sceneReady, setSceneReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [fatalError, setFatalError] = useState(null);
   const [blackHoleMode, setBlackHoleMode] = useState(false);
@@ -114,7 +117,12 @@ export default function App() {
   const [garageOpen, setGarageOpen] = useState(false);
   const [shipHud, setShipHud] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [shipLoading, setShipLoading] = useState(false);
   const [simulationDate, setSimulationDate] = useState(() => formatSimulationDate(new Date()));
+
+  useEffect(() => {
+    if (loaded) performance.mark('solaris-ui-ready');
+  }, [loaded]);
 
   useEffect(() => {
     const onError = (event) => setFatalError((prev) => prev || (event.error ? (event.error.message || '页面运行异常') : event.message));
@@ -133,7 +141,12 @@ export default function App() {
     sceneRef.current = scene;
     scene.onProgress = (progress) => setLoadingProgress(progress);
     scene.onTimeUpdate = (date) => setSimulationDate(formatSimulationDate(date));
+    scene.onSceneReady = () => {
+      performance.mark('solaris-scene-ready');
+      setSceneReady(true);
+    };
     scene.onLoaded = () => {
+      performance.mark('solaris-assets-ready');
       setLoadingProgress(100);
       setLoaded(true);
     };
@@ -191,8 +204,9 @@ export default function App() {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setLoadingProgress((progress) => Math.max(progress, 100));
+      setSceneReady(true);
       setLoaded(true);
-    }, 12000);
+    }, 6000);
     return () => window.clearTimeout(timeout);
   }, []);
 
@@ -260,12 +274,19 @@ export default function App() {
     sceneRef.current?.focusByName(name);
   }, []);
 
-  const handleEnterShipMode = useCallback(() => {
-    if (sceneRef.current?.enableShipMode()) {
-      setShipMode(true);
-      setSelectedCelestial(null);
+  const handleEnterShipMode = useCallback(async () => {
+    if (shipLoading || shipMode) return;
+    setShipLoading(true);
+    try {
+      const ready = await sceneRef.current?.enableShipMode();
+      if (ready) {
+        setShipMode(true);
+        setSelectedCelestial(null);
+      }
+    } finally {
+      setShipLoading(false);
     }
-  }, []);
+  }, [shipLoading, shipMode]);
   const handleExitShipMode = useCallback(() => {
     sceneRef.current?.disableShipMode();
     setShipMode(false);
@@ -352,8 +373,15 @@ export default function App() {
       <div className={`app${cinemaMode ? ' cinema-mode' : ''}${selectedCelestial ? ' info-open' : ''}`}>
         <div className="vignette" />
         <div className="grain" />
-        <LoadingScreen visible={!loaded} progress={loaded ? 100 : loadingProgress} />
-        <div ref={containerRef} className="canvas-container" />
+        <LoadingScreen visible={!sceneReady} progress={sceneReady ? 100 : loadingProgress} />
+        <img
+          className={`scene-poster${loaded ? ' is-hidden' : ''}`}
+          src={`${import.meta.env.BASE_URL}textures/hero-poster.webp`}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+        />
+        <div ref={containerRef} className={`canvas-container${loaded ? ' is-ready' : ''}`} />
 
         {!cinemaMode && !shipMode && (
           <>
@@ -361,6 +389,7 @@ export default function App() {
               speedLevel={timeSpeed}
               simulationDate={simulationDate}
               isPaused={isPaused}
+              shipLoading={shipLoading}
               onEnterShip={handleEnterShipMode}
               onBlackHole={handleEnterBlackHole}
               onGuide={() => setGuideOpen(true)}
@@ -377,7 +406,7 @@ export default function App() {
                 </div>
               </section>
             )}
-            <PlanetLabels positions={planetPositions} />
+            <PlanetLabels positions={planetPositions} selectedName={selectedCelestial?.name} />
             <NavigationPanel onSelect={handleFocusByName} selectedName={selectedCelestial?.name} />
             <PlanetInfo celestial={selectedCelestial} onClose={handleCloseInfo} onCancelTracking={handleCancelTracking} />
             <PlanetQuickNav selectedName={selectedCelestial?.name} onSelect={handleFocusByName} />
@@ -391,6 +420,7 @@ export default function App() {
               showLensFlare={lensFlare}
               globalScale={globalScale}
               isMusicPlaying={isMusicPlaying}
+              shipLoading={shipLoading}
               onTogglePause={handleTogglePause}
               onSpeedChange={handleSpeedChange}
               onZoomChange={handleZoomChange}
@@ -437,14 +467,16 @@ export default function App() {
           />
         )}
 
-        {blackHoleMode && <BlackHoleOverlay onExit={handleExitBlackHole} />}
-        {garageOpen && (
-          <ShipGarageOverlay
-            currentShipId={sceneRef.current?.getShipId?.()}
-            onConfirm={handleGarageConfirm}
-            onExit={handleGarageExit}
-          />
-        )}
+        <Suspense fallback={null}>
+          {blackHoleMode && <BlackHoleOverlay onExit={handleExitBlackHole} />}
+          {garageOpen && (
+            <ShipGarageOverlay
+              currentShipId={sceneRef.current?.getShipId?.()}
+              onConfirm={handleGarageConfirm}
+              onExit={handleGarageExit}
+            />
+          )}
+        </Suspense>
         {guideOpen && !blackHoleMode && !shipMode && <GuideModal onClose={() => setGuideOpen(false)} />}
       </div>
     </ErrorBoundary>

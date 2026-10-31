@@ -4,11 +4,16 @@ import * as THREE from 'three';
 // 近层旋转快、远层旋转慢，相机移动时产生立体深度
 export function createStarfield() {
   const group = new THREE.Group();
+  const compact = window.matchMedia?.('(max-width: 768px)').matches;
 
-  const layers = [
-    { count: 8000,  radiusMin: 2000, radiusMax: 3500, speed: 0.00008, sizeScale: 1.3 },
-    { count: 15000, radiusMin: 4000, radiusMax: 6500, speed: 0.00003, sizeScale: 1.0 },
-    { count: 10000, radiusMin: 7000, radiusMax: 10000, speed: 0.00001, sizeScale: 0.7 }
+  const layers = compact ? [
+    { count: 2800, radiusMin: 2000, radiusMax: 3500, speed: 0.00008, sizeScale: 1.3 },
+    { count: 4200, radiusMin: 4000, radiusMax: 6500, speed: 0.00003, sizeScale: 1.0 },
+    { count: 3000, radiusMin: 7000, radiusMax: 10000, speed: 0.00001, sizeScale: 0.7 }
+  ] : [
+    { count: 5000, radiusMin: 2000, radiusMax: 3500, speed: 0.00008, sizeScale: 1.3 },
+    { count: 8500, radiusMin: 4000, radiusMax: 6500, speed: 0.00003, sizeScale: 1.0 },
+    { count: 6000, radiusMin: 7000, radiusMax: 10000, speed: 0.00001, sizeScale: 0.7 }
   ];
 
   layers.forEach(layer => {
