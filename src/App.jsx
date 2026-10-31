@@ -192,7 +192,7 @@ export default function App() {
     const timeout = window.setTimeout(() => {
       setLoadingProgress((progress) => Math.max(progress, 100));
       setLoaded(true);
-    }, 6500);
+    }, 12000);
     return () => window.clearTimeout(timeout);
   }, []);
 

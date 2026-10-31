@@ -2493,6 +2493,8 @@ kbd {
 }
 
 .quick-planet-orb {
+  background-color: var(--planet-color);
+  background-position: center;
   background-size: 145%;
   box-shadow:
     inset -8px -6px 12px rgba(0, 0, 0, 0.42),

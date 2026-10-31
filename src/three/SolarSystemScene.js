@@ -540,14 +540,16 @@ export class SolarSystemScene {
       this._lastFrameAt = now;
     }
 
-    const delta = Math.min(this.clock.getDelta(), 0.05);
+    const rawDelta = this.clock.getDelta();
+    const delta = Math.min(rawDelta, 0.05);
     const time = Date.now() * 0.001;
     
     if (!this.isPaused) {
-      const simulationDelta = delta * this.timeSpeed;
+      // 星历推进使用真实帧间隔，保证 1× 始终约等于 1 日/秒，不受刷新率影响。
+      const simulationDelta = Math.min(rawDelta, 0.25) * this.timeSpeed;
       this.simulationDays += simulationDelta;
       this.updatePlanets(simulationDelta);
-      this.updateSun();
+      this.updateSun(simulationDelta);
       if (this.onTimeUpdate && now - this._lastDateEmit > 300) {
         this.onTimeUpdate(this.getSimulationDate());
         this._lastDateEmit = now;
@@ -661,9 +663,9 @@ export class SolarSystemScene {
     }
   }
 
-  updateSun() {
+  updateSun(simulationDelta = 0) {
     if (this.sun) {
-      this.sun.rotation.y += 0.005 * this.timeSpeed;
+      this.sun.rotation.y += simulationDelta * 0.25;
       
       const pulseFactor = Math.sin(Date.now() * 0.001) * 0.02 + 1;
       this.sun.scale.set(pulseFactor, pulseFactor, pulseFactor);
