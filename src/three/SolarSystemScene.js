@@ -62,6 +62,18 @@ export class SolarSystemScene {
     this.suspended = false;
     this.shipSystem = null;
     this.clock = new THREE.Clock();
+
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
+    const smallViewport = window.matchMedia?.('(max-width: 768px)').matches;
+    this.prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    this.lowPower = Boolean(coarsePointer || smallViewport || this.prefersReducedMotion);
+    this.maxPixelRatio = this.lowPower ? 1.35 : 1.75;
+    this._frameCounter = 0;
+    this._adaptiveRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+    this._lastFrameAt = 0;
+    this._visibilityHandler = () => {
+      if (!document.hidden && this.controls) this.controls.update();
+    };
   }
 
   init() {
@@ -76,13 +88,13 @@ export class SolarSystemScene {
     this.camera.position.set(0, 600, 1800);
     
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !this.lowPower,
       alpha: true,
-      powerPreference: 'high-performance'
+      powerPreference: this.lowPower ? 'default' : 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setPixelRatio(this._adaptiveRatio);
+    this.renderer.shadowMap.enabled = !this.lowPower;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -122,6 +134,12 @@ export class SolarSystemScene {
     
     // 加载管理器：所有贴图加载完成后通知 UI 关闭加载页
     this.loadingManager = new THREE.LoadingManager();
+    this.loadingManager.onProgress = (url, loaded, total) => {
+      if (this.onProgress && total > 0) {
+        // 前 15% 留给场景初始化，避免加载条长时间停留在 0
+        this.onProgress(Math.min(15 + (loaded / total) * 85, 99));
+      }
+    };
     this.loadingManager.onLoad = () => {
       if (this.onLoaded) this.onLoaded();
     };
@@ -169,6 +187,15 @@ export class SolarSystemScene {
       this.colorGradingPass = pp.colorGradingPass;
       this.vignetteGrainPass = pp.vignetteGrainPass;
       this.lensFlarePass = pp.lensFlarePass;
+
+      // 移动端 / 低功耗模式跳过高价后期通道，只保留核心 Bloom
+      if (this.lowPower) {
+        this.godRaysPass.enabled = false;
+        this.chromaticPass.enabled = false;
+        this.colorGradingPass.enabled = false;
+        this.vignetteGrainPass.enabled = false;
+        this.lensFlarePass.enabled = false;
+      }
     } catch (e) {
       console.error('[solar] 后期管线初始化失败，退回普通渲染：', e);
       this.composer = null;
@@ -269,8 +296,8 @@ export class SolarSystemScene {
     this.sunLight = new THREE.PointLight(0xfff2e0, 3.0, 0, 0);
     this.sunLight.position.set(0, 0, 0);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
     this.sunLight.shadow.camera.near = 1;
     this.sunLight.shadow.camera.far = 6500;
     this.sunLight.shadow.bias = -0.0003;
@@ -446,12 +473,16 @@ export class SolarSystemScene {
   }
 
   setupResize() {
-    window.addEventListener('resize', () => {
+    this._resizeHandler = () => {
+      this._adaptiveRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
+      this.renderer.setPixelRatio(this._adaptiveRatio);
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       if (this.composer) this.composer.setSize(window.innerWidth, window.innerHeight);
-    });
+    };
+    window.addEventListener('resize', this._resizeHandler);
+    document.addEventListener('visibilitychange', this._visibilityHandler);
   }
 
   animate() {
@@ -459,6 +490,21 @@ export class SolarSystemScene {
 
     // 黑洞体验期间挂起太阳系渲染，让出全部 GPU
     if (this.suspended) return;
+
+    // 自适应降载：连续低帧率时降低渲染分辨率，优先保证交互流畅
+    const now = performance.now();
+    if (!this._lastFrameAt) this._lastFrameAt = now;
+    const frameElapsed = now - this._lastFrameAt;
+    this._frameCounter++;
+    if (frameElapsed >= 2500) {
+      const fps = (this._frameCounter * 1000) / frameElapsed;
+      if (fps < 27 && this._adaptiveRatio > 1.05) {
+        this._adaptiveRatio = Math.max(1, this._adaptiveRatio - 0.25);
+        this.renderer.setPixelRatio(this._adaptiveRatio);
+      }
+      this._frameCounter = 0;
+      this._lastFrameAt = now;
+    }
 
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const time = Date.now() * 0.001;
@@ -641,21 +687,24 @@ export class SolarSystemScene {
   }
 
   setGodRays(enabled) {
-    this.godRaysEnabled = enabled;
+    this.godRaysEnabled = enabled && !this.lowPower;
     if (this.godRaysPass) {
-      this.godRaysPass.uniforms.intensity.value = enabled ? 0.55 : 0.0;
+      this.godRaysPass.enabled = this.godRaysEnabled;
+      this.godRaysPass.uniforms.intensity.value = this.godRaysEnabled ? 0.55 : 0.0;
     }
   }
 
   setChromatic(enabled) {
-    this.chromaticEnabled = enabled;
+    this.chromaticEnabled = enabled && !this.lowPower;
     if (this.chromaticPass) {
-      this.chromaticPass.uniforms.amount.value = enabled ? 0.003 : 0.0;
+      this.chromaticPass.enabled = this.chromaticEnabled;
+      this.chromaticPass.uniforms.amount.value = this.chromaticEnabled ? 0.003 : 0.0;
     }
   }
 
   setLensFlare(enabled) {
-    this.lensFlareEnabled = enabled;
+    this.lensFlareEnabled = enabled && !this.lowPower;
+    if (this.lensFlarePass) this.lensFlarePass.enabled = this.lensFlareEnabled;
   }
 
   // 每帧更新后期处理 uniforms（太阳屏幕坐标、时间等）
@@ -929,8 +978,8 @@ export class SolarSystemScene {
       
       const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
-      
-      positions[planet.name] = { x, y, visible: this.showNames };
+      const inView = vector.z > -1 && vector.z < 1 && x > -80 && x < window.innerWidth + 80 && y > -40 && y < window.innerHeight + 80;
+      positions[planet.name] = { x, y, visible: this.showNames && inView };
     });
     
     if (this.sun) {
@@ -940,8 +989,8 @@ export class SolarSystemScene {
       
       const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
-      
-      positions['太阳'] = { x, y, visible: this.showNames };
+      const inView = vector.z > -1 && vector.z < 1 && x > -80 && x < window.innerWidth + 80 && y > -40 && y < window.innerHeight + 80;
+      positions['太阳'] = { x, y, visible: this.showNames && inView };
     }
 
     // 知名小行星标签
@@ -952,7 +1001,8 @@ export class SolarSystemScene {
         vector.project(this.camera);
         const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
         const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
-        positions[a.name] = { x, y, visible: this.showNames };
+        const inView = vector.z > -1 && vector.z < 1 && x > -80 && x < window.innerWidth + 80 && y > -40 && y < window.innerHeight + 80;
+        positions[a.name] = { x, y, visible: this.showNames && inView };
       });
     }
     
@@ -1106,6 +1156,8 @@ export class SolarSystemScene {
   }
 
   dispose() {
+    if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
+    if (this._visibilityHandler) document.removeEventListener('visibilitychange', this._visibilityHandler);
     if (this.shipSystem) {
       this.shipSystem.dispose();
       this.shipSystem = null;

@@ -1,6 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Icon } from './Icon';
 
-export function ControlPanel({
+function ToggleButton({ active, onClick, children, label }) {
+  return (
+    <button className={`setting-toggle${active ? ' active' : ''}`} onClick={onClick} aria-pressed={active}>
+      <span>{label || children}</span>
+      <span className="toggle-indicator"><span /></span>
+    </button>
+  );
+}
+
+export const ControlPanel = React.memo(function ControlPanel({
   isPaused,
   timeSpeed,
   showOrbits,
@@ -23,11 +33,64 @@ export function ControlPanel({
   onBlackHole,
   onEnterShip
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
-    <div className="controls">
-      <div className="control-group">
-        <div className="slider-row">
-          <label htmlFor="speedControl">速度</label>
+    <>
+      {settingsOpen && (
+        <section className="control-settings" aria-label="观测设置">
+          <div className="settings-header">
+            <div>
+              <span className="eyebrow">OBSERVATION DECK</span>
+              <h2>观测设置</h2>
+            </div>
+            <button className="icon-btn" onClick={() => setSettingsOpen(false)} aria-label="收起设置">
+              <Icon name="close" size={17} />
+            </button>
+          </div>
+          <div className="settings-zoom">
+            <label htmlFor="zoomControl"><Icon name="expand" size={15} /> 场景缩放</label>
+            <span>{globalScale.toFixed(1)}×</span>
+            <input
+              type="range"
+              id="zoomControl"
+              min="0.5"
+              max="3"
+              step="0.1"
+              value={globalScale}
+              onChange={(event) => onZoomChange(Number(event.target.value))}
+            />
+          </div>
+          <div className="settings-grid">
+            <ToggleButton active={showOrbits} onClick={onToggleOrbits} label="行星轨道" />
+            <ToggleButton active={showStars} onClick={onToggleStars} label="深空星场" />
+            <ToggleButton active={showNames} onClick={onToggleNames} label="天体名称" />
+            <ToggleButton active={showBloom} onClick={onToggleBloom} label="电影辉光" />
+            <ToggleButton active={showLensFlare} onClick={onToggleLensFlare} label="镜头光晕" />
+            <ToggleButton active={isMusicPlaying} onClick={onToggleMusic} label="深空声景" />
+          </div>
+          <div className="quality-note"><Icon name="gauge" size={14} /> 自适应画质已启用，优先保持流畅</div>
+        </section>
+      )}
+
+      <div className="controls" role="toolbar" aria-label="太阳系观测控制">
+        <div className="control-buttons primary-controls">
+          <button
+            className={`control-icon play-control${isPaused ? ' active' : ''}`}
+            onClick={onTogglePause}
+            aria-label={isPaused ? '继续模拟' : '暂停模拟'}
+            title={isPaused ? '继续 (Space)' : '暂停 (Space)'}
+          >
+            <Icon name={isPaused ? 'play' : 'pause'} size={18} />
+          </button>
+          <button className="control-icon reset-control" onClick={onResetView} aria-label="重置视角" title="重置视角">
+            <Icon name="reset" size={17} />
+          </button>
+        </div>
+
+        <div className="control-divider" />
+        <div className="slider-row speed-row">
+          <label htmlFor="speedControl">时间流速</label>
           <input
             type="range"
             id="speedControl"
@@ -35,54 +98,36 @@ export function ControlPanel({
             max="10"
             step="0.1"
             value={timeSpeed}
-            onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+            onChange={(event) => onSpeedChange(Number(event.target.value))}
+            style={{ '--range-progress': `${timeSpeed * 10}%` }}
           />
-          <span className="slider-value">{timeSpeed.toFixed(1)}×</span>
+          <output className="slider-value" htmlFor="speedControl">{timeSpeed.toFixed(1)}<small>×</small></output>
         </div>
-        <div className="slider-row">
-          <label htmlFor="zoomControl">缩放</label>
-          <input
-            type="range"
-            id="zoomControl"
-            min="0.5"
-            max="3.0"
-            step="0.1"
-            value={globalScale}
-            onChange={(e) => onZoomChange(parseFloat(e.target.value))}
-          />
-          <span className="slider-value">{globalScale.toFixed(1)}×</span>
+
+        <div className="control-divider secondary-divider" />
+        <div className="control-toggles desktop-toggles">
+          <button className={`minimal-toggle${showOrbits ? ' active' : ''}`} onClick={onToggleOrbits} aria-pressed={showOrbits}>轨道</button>
+          <button className={`minimal-toggle${showNames ? ' active' : ''}`} onClick={onToggleNames} aria-pressed={showNames}>标签</button>
         </div>
-      </div>
 
-      <div className="control-group control-buttons">
-        <button className={isPaused ? 'ctrl-btn active' : 'ctrl-btn'} onClick={onTogglePause}>
-          {isPaused ? '▶ 播放' : '⏸ 暂停'}
+        <button
+          className={`control-icon settings-control${settingsOpen ? ' active' : ''}`}
+          onClick={() => setSettingsOpen((open) => !open)}
+          aria-label="观测设置"
+          aria-expanded={settingsOpen}
+          title="观测设置"
+        >
+          <Icon name="settings" size={18} />
         </button>
-        <button className="ctrl-btn" onClick={onResetView}>⟲ 重置</button>
-        <button className="ctrl-btn bh-btn" onClick={onBlackHole} title="进入 GARGANTUA 黑洞">◉ 探索黑洞</button>
-        <button className="ctrl-btn ship-btn" onClick={onEnterShip} title="登上星隼号">🛰 星隼号</button>
-      </div>
-
-      <div className="control-group control-toggles">
-        <button className={showOrbits ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleOrbits}>
-          轨道
+        <button className="text-control blackhole-control" onClick={onBlackHole} title="进入 Gargantua 黑洞">
+          <Icon name="blackhole" size={17} /> <span className="action-label">黑洞</span>
         </button>
-        <button className={showStars ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleStars}>
-          星空
-        </button>
-        <button className={showNames ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleNames}>
-          名称
-        </button>
-        <button className={showBloom ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleBloom}>
-          辉光
-        </button>
-        <button className={showLensFlare ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleLensFlare}>
-          光晕
-        </button>
-        <button className={isMusicPlaying ? 'toggle-btn active' : 'toggle-btn'} onClick={onToggleMusic}>
-          {isMusicPlaying ? '♪ 静音' : '♪ 音乐'}
+        <button className="ship-launch" onClick={onEnterShip} title="登上星舰">
+          <Icon name="rocket" size={17} />
+          <span className="action-label">星舰出航</span>
+          <Icon name="arrow" size={15} className="launch-arrow" />
         </button>
       </div>
-    </div>
+    </>
   );
-}
+});
