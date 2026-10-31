@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 
-export const Header = React.memo(function Header({ speedLevel, isPaused, onEnterShip, onBlackHole, onGuide }) {
+export const Header = React.memo(function Header({ speedLevel, simulationDate, isPaused, onEnterShip, onBlackHole, onGuide }) {
   return (
     <header className="app-header">
       <a className="brand" href="./" aria-label="SOLARIS 太阳系首页">
@@ -25,9 +25,12 @@ export const Header = React.memo(function Header({ speedLevel, isPaused, onEnter
       </nav>
 
       <div className="header-actions">
-        <div className="live-status" title={`时间流速 ${speedLevel.toFixed(1)} 倍`}>
+        <div className="live-status" title={`模拟日期 ${simulationDate} · 流速 ${speedLevel.toFixed(1)} 日/秒`}>
           <span className={`status-pulse${isPaused ? ' paused' : ''}`} />
-          <span>{isPaused ? '时间已暂停' : '实时模拟'}</span>
+          <span className="live-copy">
+            <span className="live-label">{isPaused ? 'TIME HELD' : 'LIVE EPHEMERIS'}</span>
+            <span className="live-date">{simulationDate}</span>
+          </span>
           <span className="live-speed">{speedLevel.toFixed(1)}×</span>
         </div>
         <button className="icon-btn guide-btn" onClick={onGuide} aria-label="打开使用指南" title="使用指南">

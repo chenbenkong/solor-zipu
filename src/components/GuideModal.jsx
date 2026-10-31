@@ -30,7 +30,7 @@ export function GuideModal({ open, onClose }) {
           </div>
           <button ref={closeRef} className="icon-btn" onClick={onClose} aria-label="关闭探索指南"><Icon name="close" size={19} /></button>
         </div>
-        <p className="guide-lead">没有固定航线。选择一颗天体，或只是拖动视角，让好奇心决定下一站。</p>
+        <p className="guide-lead">行星遵循 J2000 星历与开普勒轨道运行。选择一颗天体，或直接拖动视角，让好奇心决定下一站。</p>
         <div className="guide-grid">
           <article>
             <span className="guide-card-icon"><Icon name="drag" size={22} /></span>
@@ -38,7 +38,7 @@ export function GuideModal({ open, onClose }) {
           </article>
           <article>
             <span className="guide-card-icon"><Icon name="orbit" size={23} /></span>
-            <div><strong>控制时间</strong><p>空格键播放或暂停，上下方向键调整速度。也可以直接点击底部的时间倍率。</p></div>
+            <div><strong>控制时间</strong><p>空格键播放或暂停，方向键调整速度；设置中可一键返回今日，并实时查看模拟日期。</p></div>
           </article>
           <article>
             <span className="guide-card-icon"><Icon name="rocket" size={22} /></span>

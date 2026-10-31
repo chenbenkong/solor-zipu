@@ -7,6 +7,7 @@ import { createComposer } from './postprocessing/createComposer.js';
 import { createAsteroidBelt, createKuiperBelt } from './objects/createAsteroidBelt.js';
 import { createAsteroidTextures } from './objects/asteroidTextures.js';
 import { ShipSystem } from './ship/ShipSystem.js';
+import { daysSinceJ2000, getOrbitalPosition, J2000_MS } from './orbitalMechanics.js';
 
 export class SolarSystemScene {
   constructor(container) {
@@ -62,6 +63,12 @@ export class SolarSystemScene {
     this.suspended = false;
     this.shipSystem = null;
     this.clock = new THREE.Clock();
+    this.simulationDays = daysSinceJ2000();
+    this.onTimeUpdate = null;
+    this._lastDateEmit = 0;
+    this.cameraTransition = null;
+    this._worldPosition = new THREE.Vector3();
+    this._transitionDrift = new THREE.Vector3();
 
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
     const smallViewport = window.matchMedia?.('(max-width: 768px)').matches;
@@ -76,16 +83,35 @@ export class SolarSystemScene {
     };
   }
 
+  getHomeView() {
+    const compact = window.innerWidth < 768;
+    return {
+      position: compact ? new THREE.Vector3(0, 2100, 4800) : new THREE.Vector3(0, 1450, 3700),
+      target: compact ? new THREE.Vector3(0, 0, 450) : new THREE.Vector3(0, 0, 380)
+    };
+  }
+
+  getSimulationDate() {
+    return new Date(J2000_MS + this.simulationDays * 86400000);
+  }
+
+  resetSimulationTime() {
+    this.simulationDays = daysSinceJ2000();
+    this.updatePlanets(0);
+    if (this.onTimeUpdate) this.onTimeUpdate(this.getSimulationDate());
+  }
+
   init() {
     this.scene = new THREE.Scene();
     
     this.camera = new THREE.PerspectiveCamera(
-      60,
+      52,
       window.innerWidth / window.innerHeight,
-      0.1,
+      0.5,
       20000
     );
-    this.camera.position.set(0, 600, 1800);
+    const homeView = this.getHomeView();
+    this.camera.position.copy(homeView.position);
     
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this.lowPower,
@@ -94,7 +120,7 @@ export class SolarSystemScene {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(this._adaptiveRatio);
-    this.renderer.shadowMap.enabled = !this.lowPower;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -107,8 +133,9 @@ export class SolarSystemScene {
     this.controls.enablePan = true;
     this.controls.enableRotate = true;
     this.controls.enableZoom = true;
-    this.controls.minDistance = 0.1;
-    this.controls.maxDistance = 25000;
+    this.controls.minDistance = 12;
+    this.controls.maxDistance = 16000;
+    this.controls.target.copy(homeView.target);
     
     // 监听鼠标/触摸事件来区分操作类型
     let isZooming = false;
@@ -119,8 +146,10 @@ export class SolarSystemScene {
     }, { passive: true });
     
     this.controls.addEventListener('start', () => {
+      this.cameraTransition = null;
       if (this.currentTargetPlanet && !isZooming) {
         this.currentTargetPlanet = null;
+        this.highlightOrbit(null);
       }
     });
     
@@ -155,7 +184,7 @@ export class SolarSystemScene {
     this.planetMeshes = createPlanets(this.solarSystem, this.loadingManager);
     
     // 火星—木星之间的小行星带
-    this.asteroidBelt = createAsteroidBelt(1000, 1400);
+    this.asteroidBelt = createAsteroidBelt(1600, 1850);
     this.solarSystem.add(this.asteroidBelt);
 
     this.kuiperBelt = createKuiperBelt(6500, 7500);
@@ -252,8 +281,8 @@ export class SolarSystemScene {
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
       const ctx = c.getContext('2d');
-      // 增亮 + 增饱和，让银河带清晰可见
-      ctx.filter = 'brightness(1.55) saturate(1.35) contrast(1.05)';
+      // 克制地提升银河层次，避免背景亮度压过行星主体。
+      ctx.filter = 'brightness(1.18) saturate(1.12) contrast(1.08)';
       ctx.drawImage(image, 0, 0, w, h);
       ctx.filter = 'none';
       // 星云色调叠加：大尺度柔和色块（screen 混合，低透明度）
@@ -284,32 +313,24 @@ export class SolarSystemScene {
   }
 
   setupLighting() {
-    // 明亮的环境光：暗面也有清晰可辨的细节，不再黑乎乎一片
-    const ambientLight = new THREE.AmbientLight(0x8899bb, 1.15);
+    // 低强度环境底光保留暗面细节，让太阳成为明确的主光源。
+    const ambientLight = new THREE.AmbientLight(0x71809d, 0.34);
     this.scene.add(ambientLight);
 
-    // 半球光：天空冷色、地面暖色，给背阳面充足底光
-    const hemiLight = new THREE.HemisphereLight(0x9ab0d8, 0x241c14, 0.85);
+    const hemiLight = new THREE.HemisphereLight(0x91a8cf, 0x17120e, 0.28);
     this.scene.add(hemiLight);
 
-    // 太阳点光源：decay=0 无距离衰减，靠低强度控制整体亮度
-    this.sunLight = new THREE.PointLight(0xfff2e0, 3.0, 0, 0);
+    this.sunLight = new THREE.PointLight(0xfff1dc, 4.2, 0, 0);
     this.sunLight.position.set(0, 0, 0);
-    this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 1024;
-    this.sunLight.shadow.mapSize.height = 1024;
-    this.sunLight.shadow.camera.near = 1;
-    this.sunLight.shadow.camera.far = 6500;
-    this.sunLight.shadow.bias = -0.0003;
-    this.sunLight.shadow.normalBias = 1.5;
+    // 点光源阴影需要六次立方体渲染；关闭后由材质明暗与土星环着色器承担体积表现。
+    this.sunLight.castShadow = false;
     this.scene.add(this.sunLight);
 
-    // 补光，勾出球体体积感
-    const fillLight = new THREE.DirectionalLight(0x88aaff, 0.6);
+    const fillLight = new THREE.DirectionalLight(0x7d9fc9, 0.22);
     fillLight.position.set(-300, 120, -300);
     this.scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0x99ccff, 0.35);
+    const rimLight = new THREE.DirectionalLight(0xb5d5ef, 0.18);
     rimLight.position.set(0, 200, -400);
     this.scene.add(rimLight);
   }
@@ -395,7 +416,7 @@ export class SolarSystemScene {
         const sunTarget = {
           name: '太阳',
           mesh: this.sun,
-          radius: 120
+          radius: 300
         };
         this.currentTargetPlanet = sunTarget;
         this.moveCameraToPlanet(sunTarget);
@@ -406,6 +427,7 @@ export class SolarSystemScene {
   }
 
   moveCameraToPlanet(planet) {
+    this.highlightOrbit(planet.parentPlanet?.name || planet.name || null);
     const worldPosition = new THREE.Vector3();
     planet.mesh.getWorldPosition(worldPosition);
     
@@ -440,36 +462,44 @@ export class SolarSystemScene {
   }
   
   animateCameraToPosition(targetPos, lookAtPos) {
-    const startPos = this.camera.position.clone();
-    const startTarget = this.controls.target.clone();
-    const duration = 1000; // 1秒动画
-    const startTime = Date.now();
-    
-    // 动画过程中暂时禁用控制器更新，避免冲突
-    const wasTracking = this.currentTargetPlanet !== null;
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // 使用缓动函数 (ease-out cubic)
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      
-      // 插值相机位置
-      this.camera.position.lerpVectors(startPos, targetPos, easeProgress);
-      
-      // 插值目标点
-      this.controls.target.lerpVectors(startTarget, lookAtPos, easeProgress);
-      
-      // 更新控制器
-      this.controls.update();
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
+    // 镜头动画统一进入主渲染循环，避免多个 requestAnimationFrame 相互争抢相机。
+    this.cameraTransition = {
+      startTime: performance.now(),
+      duration: this.prefersReducedMotion ? 1 : 1250,
+      startPos: this.camera.position.clone(),
+      startTarget: this.controls.target.clone(),
+      endPos: targetPos.clone(),
+      endTarget: lookAtPos.clone()
     };
-    
-    animate();
+    this.controls.enabled = false;
+  }
+
+  updateCameraTransition(now) {
+    const transition = this.cameraTransition;
+    if (!transition) return;
+    const progress = Math.min((now - transition.startTime) / transition.duration, 1);
+    const eased = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+    const endTarget = this._worldPosition.copy(transition.endTarget);
+    const endPos = this._transitionDrift.copy(transition.endPos);
+    if (this.currentTargetPlanet) {
+      const currentWorld = new THREE.Vector3();
+      this.currentTargetPlanet.mesh.getWorldPosition(currentWorld);
+      const drift = currentWorld.clone().sub(transition.endTarget);
+      endTarget.copy(currentWorld);
+      endPos.add(drift);
+    }
+
+    this.camera.position.lerpVectors(transition.startPos, endPos, eased);
+    this.controls.target.lerpVectors(transition.startTarget, endTarget, eased);
+    this.camera.lookAt(this.controls.target);
+    if (progress >= 1) {
+      this.cameraTransition = null;
+      this.controls.enabled = !(this.shipSystem && this.shipSystem.enabled);
+      this.controls.update();
+    }
   }
 
   setupResize() {
@@ -488,8 +518,12 @@ export class SolarSystemScene {
   animate() {
     this.animationId = requestAnimationFrame(() => this.animate());
 
-    // 黑洞体验期间挂起太阳系渲染，让出全部 GPU
+    // 黑洞体验或后台标签页期间挂起渲染，让出 GPU 与电量。
     if (this.suspended) return;
+    if (document.hidden) {
+      this.clock.getDelta();
+      return;
+    }
 
     // 自适应降载：连续低帧率时降低渲染分辨率，优先保证交互流畅
     const now = performance.now();
@@ -510,8 +544,14 @@ export class SolarSystemScene {
     const time = Date.now() * 0.001;
     
     if (!this.isPaused) {
-      this.updatePlanets();
+      const simulationDelta = delta * this.timeSpeed;
+      this.simulationDays += simulationDelta;
+      this.updatePlanets(simulationDelta);
       this.updateSun();
+      if (this.onTimeUpdate && now - this._lastDateEmit > 300) {
+        this.onTimeUpdate(this.getSimulationDate());
+        this._lastDateEmit = now;
+      }
     }
     
     if (this.starField && this.starField.children) {
@@ -520,13 +560,15 @@ export class SolarSystemScene {
         if (layer.userData.material) {
           layer.userData.material.uniforms.time.value = time;
         }
-        if (layer.userData.rotSpeed) {
-          layer.rotation.y += layer.userData.rotSpeed * this.timeSpeed;
+        if (layer.userData.rotSpeed && !this.isPaused && !this.prefersReducedMotion) {
+          layer.rotation.y += layer.userData.rotSpeed * delta * this.timeSpeed;
         }
       });
     }
     
-    if (this.shipSystem && this.shipSystem.enabled) {
+    if (this.cameraTransition) {
+      this.updateCameraTransition(now);
+    } else if (this.shipSystem && this.shipSystem.enabled) {
       // 飞船模式：飞船系统接管相机与输入
       this.shipSystem.update(delta, this.timeSpeed, this.isPaused);
     } else if (this.currentTargetPlanet) {
@@ -559,53 +601,46 @@ export class SolarSystemScene {
     }
   }
 
-  updatePlanets() {
-    const time = Date.now();
-    
+  updatePlanets(simulationDelta = 0) {
     this.planetMeshes.forEach(planet => {
-      if (planet.name === '土星') {
-        planet.mesh.rotation.y += 0.0008 * this.timeSpeed;
-        if (planet.ring && planet.ring.userData.ringMaterial) {
-          const saturnWorld = new THREE.Vector3();
-          planet.mesh.getWorldPosition(saturnWorld);
-          planet.ring.userData.ringMaterial.uniforms.sunDirection.value
-            .copy(saturnWorld).multiplyScalar(-1).normalize();
-        }
-      } else if (planet.name === '火星') {
-        planet.mesh.rotation.y += 0.0002 * this.timeSpeed;
-      } else if (planet.name === '金星') {
-        planet.mesh.rotation.y -= 0.0001 * this.timeSpeed;
-      } else {
-        planet.mesh.rotation.y += planet.rotationSpeed * this.timeSpeed;
+      if (planet.orbitalElements) {
+        getOrbitalPosition(
+          planet.orbitalElements,
+          this.simulationDays,
+          planet.distance,
+          planet.mesh.position
+        );
       }
-      
-      const angle = time * 0.0001 * planet.orbitSpeed * this.timeSpeed;
-      const x = Math.cos(angle) * planet.distance;
-      const z = Math.sin(angle) * planet.distance;
-      planet.mesh.position.set(x, 0, z);
-      
+
+      if (planet.rotationHours) {
+        planet.mesh.rotation.y += (simulationDelta * 24 * Math.PI * 2) / planet.rotationHours;
+      }
+
+      if (planet.name === '土星' && planet.ring?.userData.ringMaterial) {
+        const saturnWorld = new THREE.Vector3();
+        planet.mesh.getWorldPosition(saturnWorld);
+        planet.ring.userData.ringMaterial.uniforms.sunDirection.value
+          .copy(saturnWorld).multiplyScalar(-1).normalize();
+      }
+
       if (planet.moons && planet.moons.length > 0) {
         planet.moons.forEach((moonEntry) => {
           const cfg = moonEntry.config;
-          const moonAngle = time * 0.0001 * cfg.orbitSpeed * this.timeSpeed;
-          const moonDist = cfg.orbitDistance;
-          moonEntry.mesh.position.x = moonDist * Math.cos(moonAngle);
-          moonEntry.mesh.position.z = moonDist * Math.sin(moonAngle);
-          moonEntry.mesh.rotation.y += cfg.rotationSpeed * this.timeSpeed;
+          moonEntry.orbitAngle = (moonEntry.orbitAngle ?? 0) + simulationDelta * cfg.orbitSpeed * 0.35;
+          moonEntry.mesh.position.x = cfg.orbitDistance * Math.cos(moonEntry.orbitAngle);
+          moonEntry.mesh.position.z = cfg.orbitDistance * Math.sin(moonEntry.orbitAngle);
+          moonEntry.mesh.rotation.y += simulationDelta * cfg.rotationSpeed * 12;
         });
       }
 
       if (planet.name === '地球') {
-        if (planet.clouds) {
-          planet.clouds.rotation.y += 0.00012 * this.timeSpeed;
-        }
-        if (planet.material && planet.material.uniforms && planet.material.uniforms.sunDirection) {
+        if (planet.clouds) planet.clouds.rotation.y += simulationDelta * 0.35;
+        if (planet.material?.uniforms?.sunDirection) {
           const earthWorld = new THREE.Vector3();
           planet.mesh.getWorldPosition(earthWorld);
-          planet.material.uniforms.sunDirection.value
-            .copy(earthWorld).multiplyScalar(-1).normalize();
+          planet.material.uniforms.sunDirection.value.copy(earthWorld).multiplyScalar(-1).normalize();
         }
-        if (planet.atmosphere && planet.atmosphere.userData.material) {
+        if (planet.atmosphere?.userData.material) {
           const earthWorld = new THREE.Vector3();
           planet.mesh.getWorldPosition(earthWorld);
           planet.atmosphere.userData.material.uniforms.sunDirection.value
@@ -613,22 +648,15 @@ export class SolarSystemScene {
         }
       }
     });
-    
-    // 小行星带整体缓慢公转
-    if (this.asteroidBelt) {
-      this.asteroidBelt.rotation.y += 0.0003 * this.timeSpeed;
-    }
-    // 柯伊伯带更慢公转
-    if (this.kuiperBelt) {
-      this.kuiperBelt.rotation.y += 0.0001 * this.timeSpeed;
-    }
-    // 知名小行星公转 + 自转
+
+    if (this.asteroidBelt) this.asteroidBelt.rotation.y += simulationDelta * 0.018;
+    if (this.kuiperBelt) this.kuiperBelt.rotation.y += simulationDelta * 0.006;
     if (this.namedAsteroids) {
-      this.namedAsteroids.forEach(a => {
-        const angle = time * 0.0001 * a.orbitSpeed * this.timeSpeed;
-        a.mesh.position.x = Math.cos(angle) * a.distance;
-        a.mesh.position.z = Math.sin(angle) * a.distance;
-        a.mesh.rotation.y += 0.005 * this.timeSpeed;
+      this.namedAsteroids.forEach(asteroid => {
+        asteroid.orbitAngle = (asteroid.orbitAngle ?? 0) + simulationDelta * asteroid.orbitSpeed * 0.15;
+        asteroid.mesh.position.x = Math.cos(asteroid.orbitAngle) * asteroid.distance;
+        asteroid.mesh.position.z = Math.sin(asteroid.orbitAngle) * asteroid.distance;
+        asteroid.mesh.rotation.y += simulationDelta * 0.8;
       });
     }
   }
@@ -753,7 +781,7 @@ export class SolarSystemScene {
   // 供导航面板调用：按名称跳转并聚焦某天体
   focusByName(name) {
     if (name === '太阳') {
-      const t = { name: '太阳', mesh: this.sun, radius: 120 };
+      const t = { name: '太阳', mesh: this.sun, radius: 300 };
       this.currentTargetPlanet = t;
       this.moveCameraToPlanet(t);
       if (this.onSunClick) this.onSunClick();
@@ -926,6 +954,13 @@ export class SolarSystemScene {
     });
   }
 
+  highlightOrbit(name) {
+    this.planetMeshes.forEach(planet => {
+      if (!planet.orbit?.material) return;
+      planet.orbit.material.opacity = planet.name === name ? 0.78 : (planet.name === '冥王星' ? 0.2 : 0.26);
+    });
+  }
+
   setShowOrbits(show) {
     this.showOrbits = show;
     this.planetMeshes.forEach(planet => {
@@ -958,14 +993,19 @@ export class SolarSystemScene {
   }
 
   resetView() {
-    this.camera.position.set(0, 600, 1800);
-    this.controls.target.set(0, 0, 0);
+    const home = this.getHomeView();
+    this.camera.position.copy(home.position);
+    this.controls.target.copy(home.target);
     this.controls.update();
     this.currentTargetPlanet = null;
+    this.cameraTransition = null;
+    this.controls.enabled = true;
+    this.highlightOrbit(null);
   }
 
   cancelTracking() {
     this.currentTargetPlanet = null;
+    this.highlightOrbit(null);
   }
 
   getPlanetScreenPositions() {
@@ -1013,10 +1053,10 @@ export class SolarSystemScene {
   createNamedAsteroids() {
     // 真实直径(km) → 半径(地球=10基准): diameter / 12756 * 10
     const data = [
-      { name: '谷神星', distance: 1150, radius: 0.74, orbitSpeed: 0.07, seed: 1, fact: '小行星带最大天体，矮行星，直径940公里，表面有盐类沉积。' },
-      { name: '灶神星', distance: 1050, radius: 0.41, orbitSpeed: 0.09, seed: 2, fact: '小行星带第二大战体，直径525公里，南极有巨大撞击坑。' },
-      { name: '智神星', distance: 1250, radius: 0.40, orbitSpeed: 0.06, seed: 3, fact: '小行星带第三大战体，直径512公里，轨道倾角高达34°。' },
-      { name: '婚神星', distance: 1350, radius: 0.20, orbitSpeed: 0.055, seed: 4, fact: '小行星带第四大战体，直径250公里，以罗马婚姻女神命名。' }
+      { name: '谷神星', distance: 1620, radius: 0.74, orbitSpeed: 0.07, seed: 1, fact: '小行星带最大天体，矮行星，直径940公里，表面有盐类沉积。' },
+      { name: '灶神星', distance: 1690, radius: 0.41, orbitSpeed: 0.09, seed: 2, fact: '小行星带第二大战体，直径525公里，南极有巨大撞击坑。' },
+      { name: '智神星', distance: 1760, radius: 0.40, orbitSpeed: 0.06, seed: 3, fact: '小行星带第三大战体，直径512公里，轨道倾角高达34°。' },
+      { name: '婚神星', distance: 1830, radius: 0.20, orbitSpeed: 0.055, seed: 4, fact: '小行星带第四大战体，直径250公里，以罗马婚姻女神命名。' }
     ];
 
     const asteroids = [];

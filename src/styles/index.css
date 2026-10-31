@@ -2421,3 +2421,217 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SOLARIS v6 · 天文星历、观测信息与移动端精修
+   ═══════════════════════════════════════════════════════════════ */
+.canvas-container canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvas-container canvas:active {
+  cursor: grabbing;
+}
+
+.live-copy {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.live-label {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.live-date {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.035em;
+}
+
+.scene-intro h1 {
+  font-size: clamp(2.35rem, 4.2vw, 4.65rem);
+  line-height: 1.06;
+}
+
+.intro-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.48rem;
+  margin-top: 1.05rem;
+}
+
+.intro-metrics span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.34rem;
+  padding: 0.42rem 0.64rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 11, 18, 0.52);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.intro-metrics strong {
+  color: var(--starlight);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.quick-planet-orb {
+  background-size: 145%;
+  box-shadow:
+    inset -8px -6px 12px rgba(0, 0, 0, 0.42),
+    inset 5px 6px 10px rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.09);
+  filter: saturate(1.15) contrast(1.04);
+}
+
+.controls {
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  padding: 0.64rem 0.78rem;
+  background: rgba(6, 8, 14, 0.82);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.speed-row {
+  width: 230px;
+}
+
+.speed-row input[type="range"] {
+  flex: 1;
+}
+
+.settings-time {
+  margin-top: 0.72rem;
+  padding: 0.68rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.settings-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.today-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.3rem 0.52rem;
+  color: var(--starlight);
+  border: 1px solid rgba(242, 182, 109, 0.24);
+  border-radius: 999px;
+  background: rgba(242, 182, 109, 0.08);
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.today-reset:hover {
+  background: rgba(242, 182, 109, 0.15);
+}
+
+.time-presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.62rem;
+}
+
+.time-preset {
+  min-height: 34px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.time-preset:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.time-preset.active {
+  color: #181006;
+  border-color: transparent;
+  background: var(--starlight);
+}
+
+.time-note {
+  margin-top: 0.52rem;
+  color: var(--faint);
+  font-size: 0.64rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+  .scene-intro h1 {
+    font-size: clamp(1.9rem, 8vw, 2.65rem);
+  }
+
+  .intro-metrics {
+    margin-top: 0.72rem;
+  }
+
+  .intro-metrics span {
+    padding: 0.34rem 0.52rem;
+    font-size: 0.53rem;
+  }
+
+  .cinema-btn {
+    top: 14px;
+    right: 60px;
+    bottom: auto;
+    width: 38px;
+    height: 38px;
+  }
+
+  .controls {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .speed-row {
+    width: 138px;
+  }
+}
+
+@media (max-width: 520px) {
+  .intro-metrics span:nth-child(3) {
+    display: none;
+  }
+
+  .speed-row {
+    width: 104px;
+  }
+
+  .time-presets {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

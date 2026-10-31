@@ -29,6 +29,7 @@ export const ControlPanel = React.memo(function ControlPanel({
   onToggleBloom,
   onToggleLensFlare,
   onResetView,
+  onResetSimulationTime,
   onToggleMusic,
   onBlackHole,
   onEnterShip
@@ -61,6 +62,26 @@ export const ControlPanel = React.memo(function ControlPanel({
               onChange={(event) => onZoomChange(Number(event.target.value))}
             />
           </div>
+          <div className="settings-time">
+            <div className="settings-section-head">
+              <span>时间控制</span>
+              <button className="today-reset" onClick={onResetSimulationTime}>
+                <Icon name="reset" size={13} /> 返回今日
+              </button>
+            </div>
+            <div className="time-presets" aria-label="时间流速预设">
+              {[0.5, 1, 3, 5, 10].map(speed => (
+                <button
+                  key={speed}
+                  className={`time-preset${Math.abs(timeSpeed - speed) < 0.001 ? ' active' : ''}`}
+                  onClick={() => onSpeedChange(speed)}
+                >
+                  {speed.toFixed(speed % 1 ? 1 : 0)}×
+                </button>
+              ))}
+            </div>
+            <p className="time-note">1× 约等于每秒推进 1 个地球日，供快速观测季节与相位变化。</p>
+          </div>
           <div className="settings-grid">
             <ToggleButton active={showOrbits} onClick={onToggleOrbits} label="行星轨道" />
             <ToggleButton active={showStars} onClick={onToggleStars} label="深空星场" />
@@ -90,7 +111,7 @@ export const ControlPanel = React.memo(function ControlPanel({
 
         <div className="control-divider" />
         <div className="slider-row speed-row">
-          <label htmlFor="speedControl">时间流速</label>
+          <label htmlFor="speedControl">时间</label>
           <input
             type="range"
             id="speedControl"

@@ -4,7 +4,9 @@ import { createSunSurfaceShader } from './sunShaders.js';
 export function createSun(manager) {
   const sunRadius = 300;
 
-  const sunGeometry = new THREE.SphereGeometry(sunRadius, 128, 128);
+  const compact = window.matchMedia?.('(max-width: 768px)').matches;
+  const sunSegments = compact ? 64 : 96;
+  const sunGeometry = new THREE.SphereGeometry(sunRadius, sunSegments, sunSegments);
 
   // 真实太阳贴图（CC BY 4.0 Solar System Scope）
   const textureLoader = new THREE.TextureLoader(manager);
@@ -26,7 +28,7 @@ export function createSun(manager) {
   sun.add(halo);
 
   // 日珥/耀斑粒子：从表面喷流并淡出，营造动态活力
-  const particles = createProminenceParticles(sunRadius);
+  const particles = createProminenceParticles(sunRadius, compact ? 320 : 600);
   sun.add(particles);
   sun.userData.particles = particles;
 
@@ -72,8 +74,7 @@ function createSunHalo(sunRadius) {
 }
 
 // 日珥粒子：沿球面分布的发射点，向外膨胀并循环
-function createProminenceParticles(sunRadius) {
-  const count = 600;
+function createProminenceParticles(sunRadius, count = 600) {
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(count * 3);
   const seeds = new Float32Array(count * 3); // x: 角度theta, y: 角度phi, z: 相位

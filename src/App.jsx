@@ -16,6 +16,12 @@ import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/plane
 import './styles/index.css';
 import './styles/cockpit.css';
 
+function formatSimulationDate(date) {
+  if (!date) return '';
+  const pad = value => String(value).padStart(2, '0');
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
+}
+
 const SHIP_NAV_TARGETS = [
   '太阳', '水星', '金星', '地球', '火星', '木星', '土星', '天王星', '海王星', '冥王星',
   '月球', '木卫一（伊奥）', '木卫二（欧罗巴）', '木卫三（盖尼米德）', '木卫四（卡里斯托）',
@@ -108,6 +114,7 @@ export default function App() {
   const [garageOpen, setGarageOpen] = useState(false);
   const [shipHud, setShipHud] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [simulationDate, setSimulationDate] = useState(() => formatSimulationDate(new Date()));
 
   useEffect(() => {
     const onError = (event) => setFatalError((prev) => prev || (event.error ? (event.error.message || '页面运行异常') : event.message));
@@ -125,6 +132,7 @@ export default function App() {
     const scene = new SolarSystemScene(containerRef.current);
     sceneRef.current = scene;
     scene.onProgress = (progress) => setLoadingProgress(progress);
+    scene.onTimeUpdate = (date) => setSimulationDate(formatSimulationDate(date));
     scene.onLoaded = () => {
       setLoadingProgress(100);
       setLoaded(true);
@@ -213,6 +221,10 @@ export default function App() {
   const handleSpeedChange = useCallback((speed) => {
     setTimeSpeed(speed);
     sceneRef.current?.setTimeSpeed(speed);
+  }, []);
+
+  const handleResetSimulationTime = useCallback(() => {
+    sceneRef.current?.resetSimulationTime();
   }, []);
 
   const handleZoomChange = useCallback((scale) => {
@@ -309,6 +321,12 @@ export default function App() {
       if (event.code === 'Space') {
         event.preventDefault();
         handleTogglePause();
+      } else if (event.code === 'KeyO') {
+        handleToggleOrbits();
+      } else if (event.code === 'KeyL') {
+        handleToggleNames();
+      } else if (event.code === 'KeyR') {
+        handleResetView();
       } else if (event.code === 'ArrowUp') {
         event.preventDefault();
         handleSpeedChange(Math.min(timeSpeed + 0.5, 10));
@@ -319,7 +337,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleTogglePause, handleSpeedChange, timeSpeed, shipMode]);
+  }, [handleTogglePause, handleSpeedChange, handleToggleOrbits, handleToggleNames, handleResetView, timeSpeed, shipMode]);
 
   return (
     <ErrorBoundary>
@@ -341,6 +359,7 @@ export default function App() {
           <>
             <Header
               speedLevel={timeSpeed}
+              simulationDate={simulationDate}
               isPaused={isPaused}
               onEnterShip={handleEnterShipMode}
               onBlackHole={handleEnterBlackHole}
@@ -348,9 +367,14 @@ export default function App() {
             />
             {!selectedCelestial && (
               <section className="scene-intro" aria-label="网站介绍">
-                <div className="eyebrow">THE GRAND VOYAGE · 01</div>
-                <h1>我们的宇宙<br /><span>触手可及</span></h1>
-                <p>拖动旋转视角 · 滚轮缩放 · 点击任意天体查看完整档案</p>
+                <div className="eyebrow">HELIOCENTRIC OBSERVATORY · 001</div>
+                <h1>穿越 45 亿年的<br /><span>秩序与光</span></h1>
+                <p>沿真实轨道抵达每一颗世界，点击天体查看完整观测档案。</p>
+                <div className="intro-metrics" aria-label="太阳系概览">
+                  <span><strong>08</strong>行星</span>
+                  <span><strong>21</strong>天体</span>
+                  <span><strong>J2000</strong>星历</span>
+                </div>
               </section>
             )}
             <PlanetLabels positions={planetPositions} />
@@ -376,6 +400,7 @@ export default function App() {
               onToggleBloom={handleToggleBloom}
               onToggleLensFlare={handleToggleLensFlare}
               onResetView={handleResetView}
+              onResetSimulationTime={handleResetSimulationTime}
               onToggleMusic={handleToggleMusic}
               onBlackHole={handleEnterBlackHole}
               onEnterShip={handleEnterShipMode}

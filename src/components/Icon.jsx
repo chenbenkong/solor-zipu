@@ -16,6 +16,8 @@ export function Icon({ name, size = 18, className = '', strokeWidth = 1.7 }) {
     search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></>,
     info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
     mouse: <><rect x="7" y="3" width="10" height="18" rx="5" /><path d="M12 3v6" /></>,
+    drag: <><path d="M9 6h-4m0 0 2-2M5 6l2 2M15 6h4m0 0-2-2m2 2-2 2M9 18H5m0 0 2-2m-2 2 2 2M15 18h4m0 0-2 2m2-2-2-2" /><circle cx="12" cy="12" r="2.5" /></>,
+    fullscreen: <><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></>,
     expand: <><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></>,
     gauge: <><path d="M4 17a8 8 0 1 1 16 0" /><path d="m12 13 4-4M7 17h10" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,

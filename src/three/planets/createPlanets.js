@@ -1,14 +1,20 @@
 import * as THREE from 'three';
 import { planetData } from '../../data/planetData.js';
+import { ORBITAL_ELEMENTS } from '../../data/orbitalElements.js';
+import { getOrbitPoints } from '../orbitalMechanics.js';
 import { createMoon } from './moon.js';
 
 const BASE = import.meta.env.BASE_URL;
+const IS_COMPACT = window.matchMedia?.('(max-width: 768px)').matches;
 
 export function createPlanets(solarSystem, manager) {
   const planetMeshes = [];
 
   planetData.forEach(planet => {
-    const geometry = new THREE.SphereGeometry(planet.radius, 96, 96);
+    const orbitalElements = ORBITAL_ELEMENTS[planet.name];
+    const renderDistance = orbitalElements?.renderDistance ?? planet.distance;
+    const segments = IS_COMPACT ? 48 : 80;
+    const geometry = new THREE.SphereGeometry(planet.radius, segments, segments);
 
     let material;
 
@@ -39,13 +45,13 @@ export function createPlanets(solarSystem, manager) {
     }
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.x = planet.distance;
+    mesh.position.x = renderDistance;
     mesh.rotation.x = THREE.MathUtils.degToRad(planet.tilt);
-    mesh.castShadow = true;
+    mesh.castShadow = false;
     mesh.receiveShadow = true;
     solarSystem.add(mesh);
 
-    const orbit = createOrbitLine(planet.distance);
+    const orbit = createOrbitLine(planet, orbitalElements, renderDistance);
     solarSystem.add(orbit);
 
     const planetObj = {
@@ -53,7 +59,10 @@ export function createPlanets(solarSystem, manager) {
       orbit,
       material,
       moonCount: planet.moons,
-      ...planet
+      ...planet,
+      distance: renderDistance,
+      orbitalElements,
+      rotationHours: orbitalElements?.rotationHours
     };
 
     // 大气辉光：Fresnel 边缘光
@@ -259,41 +268,24 @@ function createEarthAtmosphere(radius) {
   return mesh;
 }
 
-// 轨道线：随视深渐隐，增强空间纵深感
-function createOrbitLine(distance) {
-  const geo = new THREE.RingGeometry(distance - 0.3, distance + 0.3, 256);
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color(0x4a6ea8) },
-      uOpacity: { value: 0.32 },
-      uMaxDist: { value: distance }
-    },
+// 轨道线使用与天体位置完全一致的轨道根数，呈现真实椭圆、倾角与升交点方向。
+function createOrbitLine(planet, elements, renderDistance) {
+  const fallback = { a: 1, e: 0, i: 0, node: 0, perihelion: 0 };
+  const points = getOrbitPoints(elements || fallback, renderDistance, IS_COMPACT ? 256 : 384);
+  const positions = new Float32Array(points.length * 3);
+  points.forEach((point, index) => positions.set(point, index * 3));
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.LineBasicMaterial({
+    color: new THREE.Color(planet.colorHex || '#7794b8'),
     transparent: true,
-    side: THREE.DoubleSide,
+    opacity: planet.name === '冥王星' ? 0.2 : 0.26,
     depthWrite: false,
-    vertexShader: /* glsl */`
-      varying float vViewZ;
-      void main() {
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        vViewZ = mv.z;
-        gl_Position = projectionMatrix * mv;
-      }
-    `,
-    fragmentShader: /* glsl */`
-      uniform vec3 uColor;
-      uniform float uOpacity;
-      uniform float uMaxDist;
-      varying float vViewZ;
-      void main() {
-        float f = clamp(-vViewZ / uMaxDist, 0.0, 1.0);
-        float a = uOpacity * mix(1.0, 0.12, f);
-        gl_FragColor = vec4(uColor, a);
-      }
-    `
+    blending: THREE.AdditiveBlending
   });
-  const m = new THREE.Mesh(geo, mat);
-  m.rotation.x = Math.PI / 2;
-  return m;
+  const orbit = new THREE.LineLoop(geometry, material);
+  orbit.renderOrder = -1;
+  return orbit;
 }
 
 // 地球：昼夜着色器 + 地形法线
@@ -412,7 +404,7 @@ function createGasGiantMaterial(manager, path, emissive, intensity) {
     mat.map = tex;
     // 云带法线：从亮度图生成，条带起伏立体
     if (tex.image) {
-      const n = makeNormalFromImage(tex.image, 1024);
+      const n = makeNormalFromImage(tex.image, IS_COMPACT ? 384 : 768);
       mat.normalMap = n;
       mat.normalScale = new THREE.Vector2(0.55, 0.55);
     }
@@ -434,7 +426,7 @@ function createSimplePlanetMaterial(manager, path, emissive, intensity, withNorm
     tex.anisotropy = 16;
     mat.map = tex;
     if (withNormal && tex.image) {
-      const n = makeNormalFromImage(tex.image, 1024);
+      const n = makeNormalFromImage(tex.image, IS_COMPACT ? 384 : 768);
       mat.normalMap = n;
       mat.normalScale = new THREE.Vector2(1.1, 1.1);
     }
