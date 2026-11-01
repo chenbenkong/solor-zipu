@@ -20,6 +20,8 @@ export class SolarSystemScene {
     
     this.isPaused = false;
     this.timeSpeed = 1;
+    // 1× 的时间基准：每秒推进 2 小时（0.0833 天），让天体缓慢移动而不是飞速掠过
+    this.daysPerSecond = 1 / 12;
     this.showOrbits = true;
     this.showStars = true;
     this.showNames = true;
@@ -41,10 +43,7 @@ export class SolarSystemScene {
 
     this.composer = null;
     this.bloomPass = null;
-    this.godRaysPass = null;
-    this.chromaticPass = null;
-    this.colorGradingPass = null;
-    this.vignetteGrainPass = null;
+    this.cinematicPass = null;
     this.composerBroken = false;
     this.bloomEnabled = true;
     this.godRaysEnabled = true;
@@ -73,9 +72,9 @@ export class SolarSystemScene {
     const smallViewport = window.matchMedia?.('(max-width: 768px)').matches;
     this.prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     this.lowPower = Boolean(coarsePointer || smallViewport || this.prefersReducedMotion);
-    this.maxPixelRatio = this.lowPower ? 1.35 : 1.75;
+    this.maxPixelRatio = this.lowPower ? 1.2 : 1.45;
     this._frameCounter = 0;
-    this._adaptiveRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+    this._adaptiveRatio = this.computePixelRatio();
     this._lastFrameAt = 0;
     this._visibilityHandler = () => {
       if (!document.hidden && this.controls) this.controls.update();
@@ -114,7 +113,7 @@ export class SolarSystemScene {
     this.camera.position.copy(homeView.position);
     
     this.renderer = new THREE.WebGLRenderer({
-      antialias: !this.lowPower,
+      antialias: false,
       alpha: true,
       powerPreference: this.lowPower ? 'default' : 'high-performance'
     });
@@ -236,18 +235,14 @@ export class SolarSystemScene {
           const pp = createComposer(this.renderer, this.scene, this.camera);
           this.composer = pp.composer;
           this.bloomPass = pp.bloomPass;
-          this.godRaysPass = pp.godRaysPass;
-          this.chromaticPass = pp.chromaticPass;
-          this.colorGradingPass = pp.colorGradingPass;
-          this.vignetteGrainPass = pp.vignetteGrainPass;
-          this.lensFlarePass = pp.lensFlarePass;
+          this.cinematicPass = pp.cinematicPass;
           if (this.lowPower) {
-            // 移动端只保留 Bloom，其余高成本全屏通道关闭。
-            this.godRaysPass.enabled = false;
-            this.chromaticPass.enabled = false;
-            this.colorGradingPass.enabled = false;
-            this.vignetteGrainPass.enabled = false;
-            this.lensFlarePass.enabled = false;
+            // 移动端保留合成通道，但关掉体积光与色差，减轻填充率压力。
+            const uniforms = this.cinematicPass.uniforms;
+            uniforms.chromaticAmount.value = 0;
+            uniforms.godRaysIntensity.value = 0;
+            uniforms.sunVisible.value = 0;
+            uniforms.grainIntensity.value = 0.008;
           }
         })
         .catch((error) => {
@@ -524,9 +519,17 @@ export class SolarSystemScene {
     }
   }
 
+  // 像素预算：4K / 2K 屏幕上若按设备像素比满额渲染，后期通道会成倍变慢。
+  // 这里给总像素量设上限，优先保证帧率，视觉上几乎无损。
+  computePixelRatio(width = window.innerWidth, height = window.innerHeight) {
+    const budget = 3.0e6;
+    const byBudget = Math.sqrt(budget / Math.max(width * height, 1));
+    return Math.max(1, Math.min(window.devicePixelRatio || 1, this.maxPixelRatio, byBudget));
+  }
+
   setupResize() {
     this._resizeHandler = () => {
-      this._adaptiveRatio = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+      this._adaptiveRatio = this.computePixelRatio();
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setPixelRatio(this._adaptiveRatio);
@@ -568,7 +571,7 @@ export class SolarSystemScene {
     
     if (!this.isPaused) {
       // 星历推进使用真实帧间隔，保证 1× 始终约等于 1 日/秒，不受刷新率影响。
-      const simulationDelta = Math.min(rawDelta, 0.25) * this.timeSpeed;
+      const simulationDelta = Math.min(rawDelta, 0.25) * this.timeSpeed * this.daysPerSecond;
       this.simulationDays += simulationDelta;
       this.updatePlanets(simulationDelta);
       this.updateSun(simulationDelta);
@@ -649,11 +652,18 @@ export class SolarSystemScene {
 
       if (planet.moons && planet.moons.length > 0) {
         // 远景下卫星投影常不足 1 像素而被直接吞掉：这里按屏幕尺寸设最小可视比例，
-        // 近景时比例回落到 1，仍保持真实相对大小。
+        // 卫星可见性以“母行星视半径”为基准：最多放大到行星半径的 12%，且不超过 6px，
+        // 缩放缩小时跟着一起变小，不会出现卫星比行星还显眼的情况。
         const halfHeight = window.innerHeight * 0.5;
         const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) * 0.5) || 1;
-        const minPixels = this.lowPower ? 3.6 : 4.4;
         const probe = this._moonProbe || (this._moonProbe = new THREE.Vector3());
+        const planetWorld = this._planetProbe || (this._planetProbe = new THREE.Vector3());
+
+        planet.mesh.getWorldPosition(planetWorld);
+        const planetRadius = planet.mesh.geometry.parameters.radius || 1;
+        const planetDistance = Math.max(this.camera.position.distanceTo(planetWorld), 0.001);
+        const planetPx = (planetRadius * halfHeight) / (planetDistance * tanHalfFov);
+        const desiredPx = Math.min(6, Math.max(1.4, planetPx * 0.12));
 
         planet.moons.forEach((moonEntry) => {
           const cfg = moonEntry.config;
@@ -666,20 +676,17 @@ export class SolarSystemScene {
           moonEntry.mesh.getWorldPosition(probe);
           const distance = Math.max(this.camera.position.distanceTo(probe), 0.001);
           const projected = (baseRadius * halfHeight) / (distance * tanHalfFov);
-          const scale = projected >= minPixels
-            ? 1
-            : Math.min(10, minPixels / Math.max(projected, 0.0001));
+          const scale = Math.min(6, Math.max(1, desiredPx / Math.max(projected, 0.0001)));
           moonEntry.mesh.scale.setScalar(scale);
 
           // 远景补偿：光斑随父级缩放一起放大，近景时淡出，避免破坏真实质感。
           const glow = moonEntry.mesh.userData?.glow;
           if (glow) {
-            const far = Math.max(0, scale - 1.05);
-            glow.material.opacity = Math.min(0.78, far * 0.26);
+            glow.material.opacity = Math.min(0.5, Math.max(0, scale - 1.05) * 0.2);
           }
           const material = moonEntry.mesh.material;
           if (material) {
-            material.emissiveIntensity = scale > 1.25 ? 1.5 : 0.25;
+            material.emissiveIntensity = scale > 1.2 ? 0.95 : 0.42;
           }
         });
       }
@@ -767,60 +774,34 @@ export class SolarSystemScene {
 
   setGodRays(enabled) {
     this.godRaysEnabled = enabled && !this.lowPower;
-    if (this.godRaysPass) {
-      this.godRaysPass.enabled = this.godRaysEnabled;
-      this.godRaysPass.uniforms.intensity.value = this.godRaysEnabled ? 0.55 : 0.0;
-    }
   }
 
   setChromatic(enabled) {
     this.chromaticEnabled = enabled && !this.lowPower;
-    if (this.chromaticPass) {
-      this.chromaticPass.enabled = this.chromaticEnabled;
-      this.chromaticPass.uniforms.amount.value = this.chromaticEnabled ? 0.003 : 0.0;
+    if (this.cinematicPass) {
+      this.cinematicPass.uniforms.chromaticAmount.value = this.chromaticEnabled ? 0.003 : 0.0;
     }
   }
 
   setLensFlare(enabled) {
     this.lensFlareEnabled = enabled && !this.lowPower;
-    if (this.lensFlarePass) this.lensFlarePass.enabled = this.lensFlareEnabled;
   }
 
   // 每帧更新后期处理 uniforms（太阳屏幕坐标、时间等）
   updatePostProcessing(time) {
-    if (!this.composer || this.composerBroken) return;
+    if (!this.composer || this.composerBroken || !this.cinematicPass) return;
 
-    // God Rays: 投影太阳到屏幕空间，传递 UV 坐标
-    if (this.godRaysPass && this.sun) {
-      const sunNDC = this.sun.position.clone().project(this.camera);
-      // 太阳在相机背后时 z > 1，禁用光柱
+    const uniforms = this.cinematicPass.uniforms;
+    uniforms.time.value = time;
+
+    if (this.sun) {
+      const sunNDC = this._sunProjected || (this._sunProjected = new THREE.Vector3());
+      sunNDC.copy(this.sun.position).project(this.camera);
+      // 太阳在相机背后时 z > 1，关闭光柱与光晕
       const behind = sunNDC.z > 1;
-      this.godRaysPass.uniforms.sunPosition.value.set(
-        (sunNDC.x + 1) * 0.5,
-        (sunNDC.y + 1) * 0.5
-      );
-      if (this.godRaysEnabled && !behind) {
-        this.godRaysPass.uniforms.intensity.value = 0.55;
-      } else {
-        this.godRaysPass.uniforms.intensity.value = 0.0;
-      }
-    }
-
-    // Vignette + Grain: 更新时间（驱动动态颗粒）
-    if (this.vignetteGrainPass) {
-      this.vignetteGrainPass.uniforms.time.value = time;
-    }
-
-    // Lens Flare: 投影太阳到屏幕空间
-    if (this.lensFlarePass && this.sun) {
-      const sunNDC = this.sun.position.clone().project(this.camera);
-      const behind = sunNDC.z > 1;
-      this.lensFlarePass.uniforms.sunScreenPos.value.set(
-        (sunNDC.x + 1) * 0.5,
-        (sunNDC.y + 1) * 0.5
-      );
-      this.lensFlarePass.uniforms.sunVisible.value = (this.lensFlareEnabled && !behind) ? 1.0 : 0.0;
-      this.lensFlarePass.uniforms.time.value = time * 0.001;
+      uniforms.sunScreenPos.value.set((sunNDC.x + 1) * 0.5, (sunNDC.y + 1) * 0.5);
+      uniforms.godRaysIntensity.value = (this.godRaysEnabled && !behind) ? 0.55 : 0.0;
+      uniforms.sunVisible.value = (this.lensFlareEnabled && !behind) ? 1.0 : 0.0;
     }
   }
 

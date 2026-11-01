@@ -81,7 +81,7 @@ export const ControlPanel = React.memo(function ControlPanel({
                 </button>
               ))}
             </div>
-            <p className="time-note">1× 约等于每秒推进 1 个地球日，供快速观测季节与相位变化。</p>
+            <p className="time-note">1× 约每秒推进 2 小时，天体缓慢移动；需要快速看变化时可用 10×（约每秒 20 小时）。</p>
           </div>
           <div className="settings-grid">
             <ToggleButton active={showOrbits} onClick={onToggleOrbits} label="行星轨道" />

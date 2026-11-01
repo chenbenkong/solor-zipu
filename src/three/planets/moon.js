@@ -79,11 +79,8 @@ export function createMoon(planetRadius, manager, config = {}) {
   const moonOrbit = new THREE.Mesh(moonOrbitGeometry, moonOrbitMaterial);
   moonOrbit.rotation.x = Math.PI / 2;
 
-  // 卫星专属柔光：太阳直射过强时保证贴图细节可见（不改变行星光照）
-  const moonFill = new THREE.PointLight(0xbfd4ff, 0.85, moonRadius * 30, 2);
-  moon.add(moonFill);
-  moonFill.position.set(moonRadius * 4, moonRadius * 3, moonRadius * 5);
-
+  // 不再为每颗卫星挂点光源：7 盏额外点光源会显著拉长所有受光材质的逐像素光照循环，
+  // 亮度改由自发光与全局光照承担。
   // 远景微光晕：卫星在全景里只有几个像素，用微弱光斑保证「看得见」；
   // 靠近后由场景逻辑淡出，不干扰真实质感。
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({
