@@ -29,6 +29,54 @@ const SHIP_NAV_TARGETS = [
   '土卫六（泰坦）', '土卫二（恩克拉多斯）', '谷神星', '灶神星', '智神星', '婚神星'
 ];
 
+// 站点原 BGM（重写前一直在用的那首）：优先用仓库内自托管副本，
+// 失败再尝试外链，最后退回本地合成声景，避免任何网络状况下「完全没声」。
+const BGM_SOURCES = [
+  `${import.meta.env.BASE_URL}audio/bgm.mp3`,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+];
+const BGM_STORAGE_KEY = 'solaris-bgm';
+
+function createBgmAudio(onAllSourcesFailed) {
+  const audio = new Audio();
+  audio.loop = true;
+  audio.preload = 'none';
+  audio.volume = 0;
+
+  let sourceIndex = 0;
+  const loadSource = () => {
+    audio.src = BGM_SOURCES[sourceIndex];
+  };
+  loadSource();
+
+  audio.addEventListener('error', () => {
+    sourceIndex += 1;
+    if (sourceIndex < BGM_SOURCES.length) {
+      loadSource();
+      audio.play().catch(() => {});
+    } else if (onAllSourcesFailed) {
+      onAllSourcesFailed();
+    }
+  });
+
+  return audio;
+}
+
+function fadeAudio(audio, target, ms = 1400) {
+  const from = audio.volume;
+  const startedAt = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - startedAt) / ms);
+    audio.volume = Math.max(0, Math.min(1, from + (target - from) * t));
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else if (target === 0) {
+      audio.pause();
+    }
+  };
+  requestAnimationFrame(step);
+}
+
 function createAmbientSound() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
@@ -94,6 +142,7 @@ export default function App() {
   const containerRef = useRef(null);
   const sceneRef = useRef(null);
   const audioRef = useRef(null);
+  const ambienceRef = useRef(null);
 
   const [isPaused, setIsPaused] = useState(false);
   const [timeSpeed, setTimeSpeed] = useState(1);
@@ -107,6 +156,7 @@ export default function App() {
   const [selectedCelestial, setSelectedCelestial] = useState(null);
   const [planetPositions, setPlanetPositions] = useState(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const isMusicPlayingRef = useRef(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [sceneReady, setSceneReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -317,21 +367,66 @@ export default function App() {
     sceneRef.current?.setSuspended(false);
   }, []);
 
+  // 外链音乐失败（被墙 / 离线）时的兜底：本地合成声景
+  const startAmbience = useCallback(() => {
+    if (!ambienceRef.current) ambienceRef.current = createAmbientSound();
+    const ambience = ambienceRef.current;
+    if (!ambience) return;
+    ambience.context.resume().then(() => {
+      ambience.master.gain.cancelScheduledValues(ambience.context.currentTime);
+      ambience.master.gain.setTargetAtTime(0.06, ambience.context.currentTime, 0.8);
+      setIsMusicPlaying(true);
+    }).catch(() => {});
+  }, []);
+
+  const startBgm = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = createBgmAudio(() => {
+        // 自托管与外链都失败时才退回合成声景，避免用户以为「又没声了」
+        if (!isMusicPlayingRef.current) return;
+        startAmbience();
+      });
+    }
+    const audio = audioRef.current;
+    isMusicPlayingRef.current = true;
+    setIsMusicPlaying(true);
+    localStorage.setItem(BGM_STORAGE_KEY, 'on');
+    audio.play().then(() => {
+      fadeAudio(audio, 0.55);
+    }).catch(() => {
+      // 首次自动播放被浏览器拦截或网络失败：等用户真正点击后再试
+      isMusicPlayingRef.current = false;
+      setIsMusicPlaying(false);
+    });
+  }, [startAmbience]);
+
   const handleToggleMusic = useCallback(() => {
     if (isMusicPlaying) {
-      audioRef.current?.master.gain.setTargetAtTime(0, audioRef.current.context.currentTime, 0.35);
+      if (audioRef.current) fadeAudio(audioRef.current, 0);
+      if (ambienceRef.current) {
+        const ambience = ambienceRef.current;
+        ambience.master.gain.setTargetAtTime(0, ambience.context.currentTime, 0.35);
+      }
+      isMusicPlayingRef.current = false;
       setIsMusicPlaying(false);
+      localStorage.setItem(BGM_STORAGE_KEY, 'off');
       return;
     }
-    if (!audioRef.current) audioRef.current = createAmbientSound();
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.context.resume().then(() => {
-      audio.master.gain.cancelScheduledValues(audio.context.currentTime);
-      audio.master.gain.setTargetAtTime(0.055, audio.context.currentTime, 0.8);
-    }).catch(console.error);
-    setIsMusicPlaying(true);
-  }, [isMusicPlaying]);
+    startBgm();
+  }, [isMusicPlaying, startBgm]);
+
+  useEffect(() => {
+    if (localStorage.getItem(BGM_STORAGE_KEY) !== 'on') return undefined;
+    const resume = () => {
+      if (!isMusicPlayingRef.current) startBgm();
+    };
+    window.addEventListener('pointerdown', resume, { once: true });
+    window.addEventListener('keydown', resume, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', resume);
+      window.removeEventListener('keydown', resume);
+    };
+  }, [startBgm]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
