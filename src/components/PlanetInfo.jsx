@@ -2,17 +2,17 @@ import React from 'react';
 import { Icon } from './Icon';
 
 const THUMB_MAP = {
-  '太阳': 'textures/thumbs/sun.webp',
-  '月球': 'textures/thumbs/moon.webp',
-  '水星': 'textures/thumbs/mercury.webp',
-  '金星': 'textures/thumbs/venus_atmosphere.webp',
-  '地球': 'textures/thumbs/earth.webp',
-  '火星': 'textures/thumbs/mars.webp',
-  '木星': 'textures/thumbs/jupiter.webp',
-  '土星': 'textures/thumbs/saturn.webp',
-  '天王星': 'textures/thumbs/uranus.webp',
-  '海王星': 'textures/thumbs/neptune.webp',
-  '冥王星': 'textures/thumbs/pluto.webp'
+  '太阳': 'textures/sun.webp',
+  '月球': 'textures/moon.webp',
+  '水星': 'textures/mercury.webp',
+  '金星': 'textures/venus_atmosphere.webp',
+  '地球': 'textures/earth.webp',
+  '火星': 'textures/mars.webp',
+  '木星': 'textures/jupiter.webp',
+  '土星': 'textures/saturn.webp',
+  '天王星': 'textures/uranus.webp',
+  '海王星': 'textures/neptune.webp',
+  '冥王星': 'textures/pluto.webp'
 };
 
 const ENGLISH_NAMES = {
@@ -40,7 +40,14 @@ export function PlanetInfo({ celestial, onClose, onCancelTracking }) {
   const accent = celestial.color || celestial.colorHex || '#8296bd';
 
   return (
-    <aside className="planet-info visible" aria-label={`${celestial.name}天体档案`} style={{ '--celestial-accent': accent }}>
+    <aside
+      className="planet-info visible"
+      aria-label={`${celestial.name}天体档案`}
+      style={{
+        '--celestial-accent': accent,
+        '--celestial-image': thumb ? `url("${thumb}")` : 'none'
+      }}
+    >
       <div className="planet-info-visual">
         {thumb && <img className="planet-info-thumb" src={thumb} alt={`${celestial.name}表面纹理`} />}
         <div className="planet-info-visual-shade" />
@@ -72,10 +79,10 @@ export function PlanetInfo({ celestial, onClose, onCancelTracking }) {
             ) : null
           ))}
         </div>
-        <div className="button-container">
-          <button className="close-info-btn" onClick={onClose}>继续观测 <Icon name="arrow" size={14} /></button>
-          <button className="cancel-tracking-btn" onClick={onCancelTracking} title="停止自动追踪">停止追踪</button>
-        </div>
+      </div>
+      <div className="button-container">
+        <button className="close-info-btn" onClick={onClose}>继续观测 <Icon name="arrow" size={14} /></button>
+        <button className="cancel-tracking-btn" onClick={onCancelTracking} title="停止自动追踪">停止追踪</button>
       </div>
       <div className="info-scale-note">天体数据仅供科普参考 · 视觉比例已优化</div>
     </aside>
