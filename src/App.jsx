@@ -53,7 +53,8 @@ function createBgmAudio(onAllSourcesFailed) {
     sourceIndex += 1;
     if (sourceIndex < BGM_SOURCES.length) {
       loadSource();
-      audio.play().catch(() => {});
+      // 换源后继续尝试播放，成功后补上淡入
+      audio.play().then(() => fadeAudio(audio, 0.55)).catch(() => {});
     } else if (onAllSourcesFailed) {
       onAllSourcesFailed();
     }
@@ -393,10 +394,14 @@ export default function App() {
     localStorage.setItem(BGM_STORAGE_KEY, 'on');
     audio.play().then(() => {
       fadeAudio(audio, 0.55);
-    }).catch(() => {
-      // 首次自动播放被浏览器拦截或网络失败：等用户真正点击后再试
-      isMusicPlayingRef.current = false;
-      setIsMusicPlaying(false);
+    }).catch((error) => {
+      // 只有「浏览器拦截自动播放」才回退成关闭状态；
+      // 源地址加载失败由 error 事件切换到下一个源，界面保持「开启」。
+      if (error && error.name === 'NotAllowedError') {
+        isMusicPlayingRef.current = false;
+        setIsMusicPlaying(false);
+        localStorage.setItem(BGM_STORAGE_KEY, 'off');
+      }
     });
   }, [startAmbience]);
 
