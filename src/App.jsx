@@ -7,7 +7,6 @@ import { PlanetLabels } from './components/PlanetLabels';
 import { Header } from './components/Header';
 import { LoadingScreen } from './components/LoadingScreen';
 import { CockpitHud } from './components/CockpitHud';
-import { PlanetQuickNav } from './components/PlanetQuickNav';
 import { GuideModal } from './components/GuideModal';
 import { Icon } from './components/Icon';
 import { sunInfo, moonInfo, jupiterMoonInfo, saturnMoonInfo } from './data/planetData';
@@ -394,22 +393,9 @@ export default function App() {
               onBlackHole={handleEnterBlackHole}
               onGuide={() => setGuideOpen(true)}
             />
-            {!selectedCelestial && (
-              <section className="scene-intro" aria-label="网站介绍">
-                <div className="eyebrow">HELIOCENTRIC OBSERVATORY · 001</div>
-                <h1>穿越 45 亿年的<br /><span>秩序与光</span></h1>
-                <p>沿真实轨道抵达每一颗世界，点击天体查看完整观测档案。</p>
-                <div className="intro-metrics" aria-label="太阳系概览">
-                  <span><strong>08</strong>行星</span>
-                  <span><strong>21</strong>天体</span>
-                  <span><strong>J2000</strong>星历</span>
-                </div>
-              </section>
-            )}
             <PlanetLabels positions={planetPositions} selectedName={selectedCelestial?.name} />
             <NavigationPanel onSelect={handleFocusByName} selectedName={selectedCelestial?.name} />
             <PlanetInfo celestial={selectedCelestial} onClose={handleCloseInfo} onCancelTracking={handleCancelTracking} />
-            <PlanetQuickNav selectedName={selectedCelestial?.name} onSelect={handleFocusByName} />
             <ControlPanel
               isPaused={isPaused}
               timeSpeed={timeSpeed}

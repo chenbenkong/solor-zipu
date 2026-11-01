@@ -21,10 +21,9 @@ export function PlanetLabels({ positions, selectedName }) {
       const x = Math.min(width - labelWidth, Math.max(labelWidth, pos.x));
       const y = pos.y - Math.max(22, (pos.radius || 0) + 14);
 
-      // 避开标题、天体档案、导航与底部控制区，避免文字压在行星或控件上。
-      if (y < 92 || y > height - 218) return [];
-      if (x - labelWidth / 2 < 460 && y < 420) return [];
-      if (x > width - 250 && y < 165) return [];
+      // 避开顶栏、底部控制条与右侧索引区，避免文字压在控件上。
+      if (y < 92 || y > height - 118) return [];
+      if (x > width - 460 && y < 210) return [];
 
       const rect = {
         left: x - labelWidth / 2 - 8,

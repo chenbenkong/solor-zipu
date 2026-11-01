@@ -23,8 +23,8 @@ export function createMoon(planetRadius, manager, config = {}) {
     distanceRatio = 2.0,
     orbitSpeed = 2.0,
     rotationSpeed = 0.0003,
-    emissive = 0x000000,
-    emissiveIntensity = 0.0
+    emissive = 0x454d59,
+    emissiveIntensity = 0.25
   } = config;
 
   const moonRadius = planetRadius * radiusRatio;
@@ -84,9 +84,44 @@ export function createMoon(planetRadius, manager, config = {}) {
   moon.add(moonFill);
   moonFill.position.set(moonRadius * 4, moonRadius * 3, moonRadius * 5);
 
+  // 远景微光晕：卫星在全景里只有几个像素，用微弱光斑保证「看得见」；
+  // 靠近后由场景逻辑淡出，不干扰真实质感。
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: getMoonGlowTexture(),
+    color: new THREE.Color(0xd6e2f2),
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    opacity: 0
+  }));
+  glow.scale.setScalar(moonRadius * 2.3);
+  glow.renderOrder = 2;
+  moon.add(glow);
+  moon.userData.glow = glow;
+
   return {
     moon,
     moonOrbit,
-    moonConfig: { name, orbitSpeed, rotationSpeed, orbitDistance }
+    moonConfig: { name, orbitSpeed, rotationSpeed, orbitDistance, radius: moonRadius }
   };
+}
+
+let moonGlowTexture = null;
+
+function getMoonGlowTexture() {
+  if (moonGlowTexture) return moonGlowTexture;
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.32, 'rgba(226,236,250,0.55)');
+  gradient.addColorStop(1, 'rgba(180,205,240,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  moonGlowTexture = new THREE.CanvasTexture(canvas);
+  moonGlowTexture.colorSpace = THREE.SRGBColorSpace;
+  return moonGlowTexture;
 }

@@ -83,12 +83,13 @@ export function createPlanets(solarSystem, manager) {
         const { moon, moonOrbit, moonConfig } = createMoon(planet.radius, manager, moonCfg);
         moon.castShadow = true;
         moon.receiveShadow = true;
-        // Stagger initial moon positions around orbit
-        moon.position.x = moonConfig.orbitDistance * Math.cos(idx * Math.PI * 0.5);
-        moon.position.z = moonConfig.orbitDistance * Math.sin(idx * Math.PI * 0.5);
+        // 均匀错开初始相位，避免所有卫星在首帧重叠在同一侧
+        const phase = (idx / planet.moonsList.length) * Math.PI * 2 + 0.45;
+        moon.position.x = moonConfig.orbitDistance * Math.cos(phase);
+        moon.position.z = moonConfig.orbitDistance * Math.sin(phase);
         mesh.add(moon);
         mesh.add(moonOrbit);
-        planetObj.moons.push({ mesh: moon, moonOrbit, config: moonConfig });
+        planetObj.moons.push({ mesh: moon, moonOrbit, config: moonConfig, orbitAngle: phase });
       });
     } else if (planet.hasMoon) {
       const { moon, moonOrbit, moonConfig } = createMoon(planet.radius, manager);

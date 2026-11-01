@@ -648,12 +648,39 @@ export class SolarSystemScene {
       }
 
       if (planet.moons && planet.moons.length > 0) {
+        // 远景下卫星投影常不足 1 像素而被直接吞掉：这里按屏幕尺寸设最小可视比例，
+        // 近景时比例回落到 1，仍保持真实相对大小。
+        const halfHeight = window.innerHeight * 0.5;
+        const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) * 0.5) || 1;
+        const minPixels = this.lowPower ? 3.6 : 4.4;
+        const probe = this._moonProbe || (this._moonProbe = new THREE.Vector3());
+
         planet.moons.forEach((moonEntry) => {
           const cfg = moonEntry.config;
           moonEntry.orbitAngle = (moonEntry.orbitAngle ?? 0) + simulationDelta * cfg.orbitSpeed * 0.35;
           moonEntry.mesh.position.x = cfg.orbitDistance * Math.cos(moonEntry.orbitAngle);
           moonEntry.mesh.position.z = cfg.orbitDistance * Math.sin(moonEntry.orbitAngle);
           moonEntry.mesh.rotation.y += simulationDelta * cfg.rotationSpeed * 12;
+
+          const baseRadius = cfg.radius || moonEntry.mesh.geometry.parameters.radius;
+          moonEntry.mesh.getWorldPosition(probe);
+          const distance = Math.max(this.camera.position.distanceTo(probe), 0.001);
+          const projected = (baseRadius * halfHeight) / (distance * tanHalfFov);
+          const scale = projected >= minPixels
+            ? 1
+            : Math.min(10, minPixels / Math.max(projected, 0.0001));
+          moonEntry.mesh.scale.setScalar(scale);
+
+          // 远景补偿：光斑随父级缩放一起放大，近景时淡出，避免破坏真实质感。
+          const glow = moonEntry.mesh.userData?.glow;
+          if (glow) {
+            const far = Math.max(0, scale - 1.05);
+            glow.material.opacity = Math.min(0.78, far * 0.26);
+          }
+          const material = moonEntry.mesh.material;
+          if (material) {
+            material.emissiveIntensity = scale > 1.25 ? 1.5 : 0.25;
+          }
         });
       }
 

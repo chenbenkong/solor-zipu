@@ -3131,3 +3131,205 @@ kbd {
     font-size: 0.67rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SOLARIS v9 · 天体索引统一导航
+   1) 首屏大标题与底部行星条合并进索引面板，画面不再被遮挡
+   2) 修正面板被 flex 行布局压扁导致的“分类空白”问题
+   3) 卫星与行星统一使用球形缩略，卫星标注所属行星
+   ═══════════════════════════════════════════════════════════════ */
+
+.scene-intro,
+.quick-nav {
+  display: none !important;
+}
+
+.navigation-panel {
+  top: 154px;
+  right: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(404px, calc(100vw - 48px));
+  max-height: min(728px, calc(100vh - 200px));
+  padding: 1.05rem 1.05rem 0.9rem;
+  overflow: hidden;
+}
+
+.navigation-panel > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.navigation-panel-header {
+  align-items: center;
+  padding-bottom: 0.7rem;
+}
+
+.nav-search {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 42px;
+  margin: 0.1rem 0 0.15rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+}
+
+.nav-search input {
+  width: 100%;
+  min-height: 40px;
+}
+
+.navigation-panel-content {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  overscroll-behavior: contain;
+}
+
+.nav-category {
+  margin-bottom: 0.5rem;
+}
+
+.nav-category-title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.42rem 0.2rem;
+}
+
+.nav-category-title > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.nav-category-title em {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-style: normal;
+}
+
+.nav-items {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.14rem;
+  margin-top: 0.1rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.62rem;
+  width: 100%;
+  padding: 0.32rem 0.5rem 0.32rem 0.36rem;
+  border-radius: 12px;
+}
+
+.nav-orb {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--body-color, #8a8578);
+  background-position: center;
+  background-size: cover;
+  box-shadow:
+    inset -5px -5px 9px rgba(0, 0, 0, 0.55),
+    inset 2px 2px 6px rgba(255, 255, 255, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.nav-orb.is-procedural {
+  background-image:
+    radial-gradient(circle at 33% 27%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 56%),
+    radial-gradient(circle at 68% 80%, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 62%);
+}
+
+.nav-item-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  text-align: left;
+}
+
+.nav-item-text b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-item-text small {
+  overflow: hidden;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nav-check {
+  flex: 0 0 auto;
+  color: rgba(242, 182, 109, 0.9);
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nav-item.active {
+  background: rgba(242, 182, 109, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(242, 182, 109, 0.22);
+}
+
+.nav-footer {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 860px) {
+  .navigation-btn {
+    top: 74px;
+    right: 14px;
+  }
+
+  .navigation-panel {
+    top: 130px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 228px);
+    padding: 0.9rem 0.85rem 0.75rem;
+  }
+
+  .nav-orb {
+    width: 27px;
+    height: 27px;
+  }
+
+  .nav-item-text b {
+    font-size: 0.79rem;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 861px) {
+  .navigation-panel {
+    top: 146px;
+    max-height: calc(100vh - 176px);
+  }
+}
