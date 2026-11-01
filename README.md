@@ -184,3 +184,14 @@ npm run preview # 本地预览生产构建
 - 项目重写（b0b440e）时把原本的外链 BGM 换成了 58Hz 合成低音，实际在笔记本扬声器上几乎听不见，造成「BGM 没了」。
 - 现在恢复原曲（SoundHelix Song-1）并自托管到 `public/audio/bgm.mp3`，不再依赖境外外链加载速度；外链作为第二源，二者都失败时退回本地合成声景。
 - 音乐开关状态记忆在 `localStorage`：上次开着的话，本次进入页面后首次点击/按键即自动续播（浏览器要求手势才允许出声），音量 1.4 秒淡入、关闭时淡出。
+
+## 双线部署
+
+| 站点 | 地址 | 说明 |
+| --- | --- | --- |
+| GitHub Pages | https://chenbenkong.github.io/solor-zipu/ | 海外访问，源码仓库自动构建 |
+| WorkBuddy 托管 | https://solaris-observatory.app.workbuddy.host/?sharecode=V3SVRJP7EA | 国内访问更快，来自 `deploy-wb/` 静态产物 |
+
+- 构建基路径是相对路径（`base: './'`），同一份产物可同时用于子路径与根路径部署。
+- 更新 WorkBuddy 版本：`npm run build:wb`（构建并同步到 `deploy-wb/`），然后重新发布该目录。
+- 背景音乐为自托管 `public/audio/bgm.mp3`（8.5 MB，`preload="none"`，仅开启音乐时加载）。
