@@ -3273,6 +3273,7 @@ kbd {
 }
 
 .nav-item-text small {
+  margin-left: 0;
   overflow: hidden;
   color: var(--faint);
   font-family: var(--font-mono);

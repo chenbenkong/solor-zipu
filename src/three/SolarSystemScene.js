@@ -117,6 +117,18 @@ export class SolarSystemScene {
       alpha: true,
       powerPreference: this.lowPower ? 'default' : 'high-performance'
     });
+    // 通过显卡型号判断是否为核显：核显 + 高分屏是最容易掉帧的组合，默认少给一些像素。
+    try {
+      const gl = this.renderer.getContext();
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      const gpuName = debugInfo ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '') : '';
+      this.integratedGPU = /intel|uhd graphics|iris|radeon\(tm\) graphics|radeon graphics|vega \d+ graphics/i.test(gpuName);
+    } catch (_) {
+      this.integratedGPU = false;
+    }
+    this.maxPixelRatio = this.lowPower ? 1.1 : (this.integratedGPU ? 1.2 : 1.45);
+    this._adaptiveRatio = this.computePixelRatio();
+
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(this._adaptiveRatio);
     this.renderer.shadowMap.enabled = false;
@@ -522,9 +534,17 @@ export class SolarSystemScene {
   // 像素预算：4K / 2K 屏幕上若按设备像素比满额渲染，后期通道会成倍变慢。
   // 这里给总像素量设上限，优先保证帧率，视觉上几乎无损。
   computePixelRatio(width = window.innerWidth, height = window.innerHeight) {
-    const budget = 3.0e6;
+    // 像素预算：独显约 300 万，核显约 200 万，移动端约 120 万
+    const budget = this.lowPower ? 1.2e6 : (this.integratedGPU ? 2.0e6 : 3.0e6);
     const byBudget = Math.sqrt(budget / Math.max(width * height, 1));
-    return Math.max(1, Math.min(window.devicePixelRatio || 1, this.maxPixelRatio, byBudget));
+    return Math.max(0.9, Math.min(window.devicePixelRatio || 1, this.maxPixelRatio, byBudget));
+  }
+
+  // 渲染分辨率变更必须同步到后期管线，否则只有场景变清晰、后处理目标仍是旧尺寸
+  applyPixelRatio() {
+    if (!this.renderer) return;
+    this.renderer.setPixelRatio(this._adaptiveRatio);
+    if (this.composer) this.composer.setPixelRatio(this._adaptiveRatio);
   }
 
   setupResize() {
@@ -532,9 +552,12 @@ export class SolarSystemScene {
       this._adaptiveRatio = this.computePixelRatio();
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setPixelRatio(this._adaptiveRatio);
+      this.applyPixelRatio();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      if (this.composer) this.composer.setSize(window.innerWidth, window.innerHeight);
+      if (this.composer) {
+        this.composer.setPixelRatio(this._adaptiveRatio);
+        this.composer.setSize(window.innerWidth, window.innerHeight);
+      }
     };
     window.addEventListener('resize', this._resizeHandler);
     document.addEventListener('visibilitychange', this._visibilityHandler);
@@ -555,11 +578,19 @@ export class SolarSystemScene {
     if (!this._lastFrameAt) this._lastFrameAt = now;
     const frameElapsed = now - this._lastFrameAt;
     this._frameCounter++;
-    if (frameElapsed >= 2500) {
+    if (frameElapsed >= 2000) {
       const fps = (this._frameCounter * 1000) / frameElapsed;
-      if (fps < 27 && this._adaptiveRatio > 1.05) {
-        this._adaptiveRatio = Math.max(1, this._adaptiveRatio - 0.25);
-        this.renderer.setPixelRatio(this._adaptiveRatio);
+      const floor = this.lowPower ? 0.9 : 0.85;
+      const targetFps = this.integratedGPU ? 50 : 45;
+      if (fps < targetFps) {
+        if (this._adaptiveRatio > floor + 0.001) {
+          this._adaptiveRatio = Math.max(floor, this._adaptiveRatio - 0.1);
+          this.applyPixelRatio();
+        } else if (!this._bloomAutoOff) {
+          // 分辨率已降到下限仍然掉帧，关闭辉光（单价最高的一档后期）
+          this._bloomAutoOff = true;
+          if (this.bloomPass) this.bloomPass.enabled = false;
+        }
       }
       this._frameCounter = 0;
       this._lastFrameAt = now;
@@ -770,6 +801,8 @@ export class SolarSystemScene {
 
   setBloom(enabled) {
     this.bloomEnabled = enabled;
+    this._bloomAutoOff = false;
+    if (this.bloomPass) this.bloomPass.enabled = enabled;
   }
 
   setGodRays(enabled) {
